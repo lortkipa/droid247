@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "droid247",
+  "version": "0.1.0",
+  "identifier": "ai.droid247.app",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../../web/dist",
+    "beforeDevCommand": "pnpm --filter @droid247/web run dev",
+    "beforeBuildCommand": "pnpm --filter @droid247/web run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "droid247",
+        "width": 960,
+        "height": 680,
+        "minWidth": 360,
+        "minHeight": 480
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "img-src": "'self' data:",
+        "style-src": "'self' 'unsafe-inline'",
+        "connect-src": "'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:* https:"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Productivity",
+    "shortDescription": "An AI agent that keeps working 24/7 in the cloud",
+    "icon": [
+      "../../../brand/icons/linux/hicolor/32x32/apps/droid247.png",
+      "../../../brand/icons/linux/hicolor/128x128/apps/droid247.png",
+      "../../../brand/icons/linux/hicolor/256x256/apps/droid247.png",
+      "../../../brand/icons/linux/hicolor/512x512/apps/droid247.png",
+      "../../../brand/icons/macos/AppIcon.icns",
+      "../../../brand/icons/windows/droid247.ico"
+    ]
+  }
+}

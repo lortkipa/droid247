@@ -12,9 +12,26 @@ Planned targets:
 
 ## Current status
 
-- No code written yet. Tech stack, architecture, and repo layout are undecided.
+- Skeleton only: the web and desktop apps connect to the backend and show the connection status (`GET /health`). No agent features yet. Mobile is deferred, but the structure is ready for it (see below).
 - Logo: **One Eye Open** (black-and-white droid face, one eye closed, one open) with a custom wordmark. Final logo files are in `brand/logo/` and app icons for every platform are in `brand/icons/`; see `brand/README.md`. Regenerate with `python3 brand/build_brand.py`.
 - No fixed roadmap. Direction is being worked out as the project goes, so suggest options rather than assuming a settled plan.
+
+## Stack and layout
+
+pnpm workspace monorepo. Commands and env vars are listed in `README.md`.
+
+- `apps/server`: **Hono on Node** (TypeScript). Dev runs `tsx watch`; prod is a `tsup` bundle in `dist/`, plus a Docker image (`apps/server/Dockerfile`, built from the repo root).
+- `apps/web`: **React + Vite**. This is the only UI, shared by web, desktop and (later) mobile. Platform checks belong only in `src/platform.ts`.
+- `apps/native`: **Tauri 2** shell around `apps/web`. It's already mobile-ready (`lib.rs` with `mobile_entry_point`, lib crate types), so Android/iOS means `tauri android init` / `tauri ios init`.
+- `packages/shared`: the API contract (zod schemas + `API_VERSION`). Server and clients both import it. Bump the `API_VERSION` major only for breaking changes, since clients refuse a different major.
+- `packages/client`: the typed API client. All UI networking goes through it, and it takes an injectable `fetch`.
+
+Conventions:
+- Internal packages export TS source (`"exports": "./src/index.ts"`), with no build step of their own.
+- The backend URL is never same-origin: the UI reads `VITE_API_URL` (fallback `http://localhost:8787`).
+- Favicons/app icons are referenced straight from `brand/icons/` (Vite `publicDir`, Tauri `bundle.icon`). Don't copy them.
+- Lint/format with Biome, tests with Vitest (`*.test.ts` next to the code), and run `pnpm typecheck` before committing.
+- The Tauri bundle identifier is `ai.droid247.app`. Bundle IDs are effectively permanent once an app ships to stores.
 
 ## Domain
 

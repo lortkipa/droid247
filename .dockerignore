@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/target
+.git
+brand
+*.log
+.env
+.env.*
