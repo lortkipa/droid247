@@ -17,7 +17,7 @@ brand/                         Logo + app icons (see brand/README.md)
 
 ## Prerequisites
 
-- Node 22.12+ and pnpm 11 (`corepack enable` picks up the pinned version)
+- Node 22.13+ (for the built-in `node:sqlite`) and pnpm 11 (`corepack enable` picks up the pinned version)
 - Desktop only: Rust (stable) and the [Tauri system dependencies](https://tauri.app/start/prerequisites/). On Linux that's `webkit2gtk-4.1`, `libsoup3` and `librsvg`.
 - Docker, for the production server image (optional)
 
@@ -39,13 +39,25 @@ pnpm install
 | `pnpm typecheck` | `tsc` in every package |
 | `pnpm lint` / `pnpm format` | Biome check / auto-fix |
 
-The UI checks `GET /health` on load. It shows whether it reached the backend, plus the server version, API version and latency.
+## Sign-in
+
+Email + one-time code, handled by the server (`apps/server/src/auth.ts`):
+
+| Endpoint | What it does |
+|---|---|
+| `POST /auth/code` | Emails a 6-digit code, valid for 10 minutes. Requesting a new one replaces the old one. |
+| `POST /auth/verify` | Checks the code. Any attempt uses it up, so a wrong code means requesting a new one. Returns a session for an existing account, or a signup ticket for a new email. |
+| `POST /auth/signup` | Creates the account from a signup ticket plus a name. This is the only time the name is asked. |
+| `GET /auth/me` / `DELETE /auth/me` | The signed-in user / deletes the account. |
+| `POST /auth/logout` | Ends the current session. |
+
+Sessions are bearer tokens (`Authorization: Bearer …`), valid for 30 days. The UI keeps the token in `localStorage`. Accounts, codes and sessions live in SQLite (Node's built-in `node:sqlite`). Without SMTP settings the server prints codes to its console, which is all you need for local development. "Continue with Google" is not wired up yet.
 
 ## Configuration
 
 See [`.env.example`](.env.example).
 
-- **Backend:** `PORT` (default 8787), `HOST`, `CORS_ORIGINS`. The default CORS list allows the Vite dev/preview servers and the Tauri webview origins.
+- **Backend:** `PORT` (default 8787), `HOST`, `CORS_ORIGINS`, `DATABASE_PATH`, and `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PASS`/`MAIL_FROM` for sending codes. Put them in `.env` at the repo root. The default CORS list allows the Vite dev/preview servers and the Tauri webview origins. Docker keeps the database in the `data` volume.
 - **UI / desktop builds:** `VITE_API_URL` is baked in at build time and falls back to `http://localhost:8787`. For a real deployment, set it in `apps/web/.env.production.local` or the environment before `pnpm build` / `pnpm build:desktop`.
 
 ## Adding mobile later

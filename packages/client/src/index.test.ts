@@ -45,3 +45,46 @@ describe("createApiClient().health", () => {
     await expect(client.health()).rejects.toMatchObject({ kind: "http" });
   });
 });
+
+describe("auth calls", () => {
+  it("sends the session token on signed-in calls", async () => {
+    let seen: Headers | undefined;
+    const client = createApiClient({
+      baseUrl: "http://x",
+      getToken: () => "tok",
+      fetch: async (_url, init) => {
+        seen = new Headers(init?.headers);
+        return Response.json({ id: "1", email: "a@b.co", name: "Ada" });
+      },
+    });
+    await expect(client.me()).resolves.toEqual({ id: "1", email: "a@b.co", name: "Ada" });
+    expect(seen?.get("authorization")).toBe("Bearer tok");
+  });
+
+  it("does not send the token on sign-in calls", async () => {
+    let seen: Headers | undefined;
+    const client = createApiClient({
+      baseUrl: "http://x",
+      getToken: () => "tok",
+      fetch: async (_url, init) => {
+        seen = new Headers(init?.headers);
+        return new Response(null, { status: 204 });
+      },
+    });
+    await client.requestCode("a@b.co");
+    expect(seen?.get("authorization")).toBeNull();
+  });
+
+  it("exposes the server error code and message", async () => {
+    const client = createApiClient({
+      baseUrl: "http://x",
+      fetch: fakeFetch({ error: "invalid_code", message: "That code is incorrect." }, 400),
+    });
+    await expect(client.verifyCode("a@b.co", "000000")).rejects.toMatchObject({
+      kind: "http",
+      status: 400,
+      code: "invalid_code",
+      message: "That code is incorrect.",
+    });
+  });
+});

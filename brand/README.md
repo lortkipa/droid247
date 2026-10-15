@@ -21,6 +21,10 @@ Use the black files on light backgrounds and the white files on dark ones. The e
 
 The wordmark is custom geometry (not a font), and its `o` echoes the open eye.
 
+## Email (`email/`)
+
+`logo.png` is the black horizontal lockup at 3x for a 26 px display height, with a 1 px white halo (28 px tall in total). HTML email can't show SVG, so the server attaches this to the sign-in email (`apps/server/src/mailer.ts`). The halo keeps the logo visible in Gmail's dark mode, which darkens the email but never recolours images.
+
 ## App icons (`icons/`)
 
 | Platform | Files | Where they go |

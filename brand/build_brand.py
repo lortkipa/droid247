@@ -10,10 +10,11 @@ import os
 import subprocess
 import tempfile
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LOGO, ICONS = os.path.join(HERE, "logo"), os.path.join(HERE, "icons")
+EMAIL = os.path.join(HERE, "email")
 BLACK, WHITE = "#0A0A0A", "#FFFFFF"
 TAU = math.tau
 
@@ -254,6 +255,41 @@ def icon_files():
     open(out("linux", "hicolor", "scalable", "apps", "droid247.svg"), "w").write(icon_svg(512, "rounded", .66, small=False))
 
 
+# ------------------------------------------------------------------ email
+def email_files(logos):
+    """PNG lockup for HTML email, where SVG doesn't render. Shown 26 px tall, rendered at 3x.
+
+    Gmail's dark mode darkens the email but never recolours images, so a plain
+    black logo vanishes. A thin white halo keeps it readable there and is
+    barely visible on the light background.
+    """
+    os.makedirs(EMAIL, exist_ok=True)
+    scale, halo = 3, 3  # halo is 1 display px
+    with tempfile.NamedTemporaryFile("w", suffix=".svg", delete=False) as fh:
+        fh.write(logos["lockup-horizontal-black.svg"])
+    tmp_png = fh.name + ".png"
+    subprocess.run(["rsvg-convert", "-h", str(26 * scale), fh.name, "-o", tmp_png], check=True)
+    os.unlink(fh.name)
+    logo = Image.open(tmp_png).convert("RGBA")
+    os.unlink(tmp_png)
+
+    w, h = logo.size
+    canvas = Image.new("RGBA", (w + 2 * halo, h + 2 * halo))
+    canvas.alpha_composite(logo, (halo, halo))
+    # Grow the logo's alpha by a round brush to get the halo shape.
+    alpha = canvas.getchannel("A")
+    grown = Image.new("L", canvas.size, 0)
+    for dx in range(-halo, halo + 1):
+        for dy in range(-halo, halo + 1):
+            if dx * dx + dy * dy <= halo * halo + 1:
+                shifted = Image.new("L", canvas.size, 0)
+                shifted.paste(alpha, (dx, dy))
+                grown = ImageChops.lighter(grown, shifted)
+    out_img = Image.merge("RGBA", (*Image.new("RGB", canvas.size, WHITE).split(), grown))
+    out_img.alpha_composite(canvas)
+    out_img.save(os.path.join(EMAIL, "logo.png"), optimize=True)
+
+
 if __name__ == "__main__":
-    logo_files()
+    email_files(logo_files())
     icon_files()

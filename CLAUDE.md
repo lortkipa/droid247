@@ -12,7 +12,9 @@ Planned targets:
 
 ## Current status
 
-- Skeleton only: the UI is the login flow (email → 6-digit code → name → welcome, plus "Continue with Google"). Auth is **mocked client-side** in `apps/web/src/mockAuth.ts` (code `123456` passes), since the server has no auth endpoints yet. No backend status is shown in the UI; `apps/web/src/useConnection.ts` (`GET /health`) is kept but currently unused. No agent features yet. Mobile is deferred, but the structure is ready for it (see below).
+- Auth is real: email → 6-digit code (10 min, burned by any attempt) → name (new accounts only). Server side is `apps/server/src/auth.ts` + `db.ts` (SQLite via `node:sqlite`) + `mailer.ts` (SMTP via nodemailer; codes go to the server console when `SMTP_HOST` is unset). Sessions are opaque bearer tokens stored hashed; the UI keeps the token in `localStorage` (`apps/web/src/api.ts`). "Continue with Google" is shown but does nothing yet.
+- After sign-in the UI shows `apps/web/src/Account.tsx`: a deliberately unstyled test page (name, email, Log out, Delete account) that will be replaced.
+- No backend status is shown in the UI; `apps/web/src/useConnection.ts` (`GET /health`) is kept but currently unused. No agent features yet. Mobile is deferred, but the structure is ready for it (see below).
 - Theme: light/dark follows the OS setting via `prefers-color-scheme`. There is deliberately no in-app theme toggle.
 - Logo: **One Eye Open** (black-and-white droid face, one eye closed, one open) with a custom wordmark. Final logo files are in `brand/logo/` and app icons for every platform are in `brand/icons/`; see `brand/README.md`. Regenerate with `python3 brand/build_brand.py`.
 - No fixed roadmap. Direction is being worked out as the project goes, so suggest options rather than assuming a settled plan.
@@ -21,7 +23,7 @@ Planned targets:
 
 pnpm workspace monorepo. Commands and env vars are listed in `README.md`.
 
-- `apps/server`: **Hono on Node** (TypeScript). Dev runs `tsx watch`; prod is a `tsup` bundle in `dist/`, plus a Docker image (`apps/server/Dockerfile`, built from the repo root).
+- `apps/server`: **Hono on Node** (TypeScript). Dev runs `tsx watch`; prod is a `tsup` bundle in `dist/`, plus a Docker image (`apps/server/Dockerfile`, built from the repo root). Server env lives in the root `.env` (see `.env.example`). Node 22.13+ for `node:sqlite`; tsup keeps the `node:` prefix (`removeNodeProtocol: false`) because `sqlite` has no bare name.
 - `apps/web`: **React + Vite**. This is the only UI, shared by web, desktop and (later) mobile. Platform checks belong only in `src/platform.ts`.
 - `apps/native`: **Tauri 2** shell around `apps/web`. It's already mobile-ready (`lib.rs` with `mobile_entry_point`, lib crate types), so Android/iOS means `tauri android init` / `tauri ios init`.
 - `packages/shared`: the API contract (zod schemas + `API_VERSION`). Server and clients both import it. Bump the `API_VERSION` major only for breaking changes, since clients refuse a different major.

@@ -1,35 +1,29 @@
+import { isValidEmail, type Session } from "@droid247/shared";
 import { type FormEvent, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
-import { Mark } from "./Mark.tsx";
-import { isValidEmail, saveName, sendCode, signInWithGoogle, verifyCode } from "./mockAuth.ts";
+import { api, errorMessage } from "./api.ts";
 import { OtpInput } from "./OtpInput.tsx";
 
 type Step =
   | { name: "login" }
   | { name: "verify"; email: string }
-  | { name: "profile"; prefill: string }
-  | { name: "done"; firstName: string };
+  | { name: "profile"; signupToken: string };
 
-/** Sign-in flow: email (or Google) → one-time code → name → welcome. */
-export function Login() {
+/** Sign-in flow: email → one-time code → (new accounts only) name. */
+export function Login({ onSignedIn }: { onSignedIn: (session: Session) => void }) {
   const [step, setStep] = useState<Step>({ name: "login" });
   const restart = () => setStep({ name: "login" });
 
   // Keyed by step so each one remounts and replays the enter animation.
   switch (step.name) {
     case "login":
-      return (
-        <LoginStep
-          key="login"
-          onCodeSent={(email) => setStep({ name: "verify", email })}
-          onGoogle={(user) => setStep({ name: "profile", prefill: user.name })}
-        />
-      );
+      return <LoginStep key="login" onCodeSent={(email) => setStep({ name: "verify", email })} />;
     case "verify":
       return (
         <VerifyStep
           key="verify"
           email={step.email}
-          onVerified={() => setStep({ name: "profile", prefill: "" })}
+          onSignedIn={onSignedIn}
+          onNewAccount={(signupToken) => setStep({ name: "profile", signupToken })}
           onRestart={restart}
         />
       );
@@ -37,26 +31,18 @@ export function Login() {
       return (
         <ProfileStep
           key="profile"
-          prefill={step.prefill}
-          onSaved={(name) => setStep({ name: "done", firstName: name.split(/\s+/)[0] ?? name })}
+          signupToken={step.signupToken}
+          onSignedIn={onSignedIn}
           onRestart={restart}
         />
       );
-    case "done":
-      return <DoneStep key="done" firstName={step.firstName} onLogOut={restart} />;
   }
 }
 
-function LoginStep({
-  onCodeSent,
-  onGoogle,
-}: {
-  onCodeSent: (email: string) => void;
-  onGoogle: (user: { name: string; email: string }) => void;
-}) {
+function LoginStep({ onCodeSent }: { onCodeSent: (email: string) => void }) {
   const [email, setEmail] = useState("");
-  const [invalid, setInvalid] = useState(false);
-  const [busy, setBusy] = useState<"email" | "google" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -67,18 +53,18 @@ function LoginStep({
     e.preventDefault();
     const value = email.trim();
     if (!isValidEmail(value)) {
-      setInvalid(true);
+      setError("Enter a valid email address.");
       emailRef.current?.focus();
       return;
     }
-    setBusy("email");
-    await sendCode(value);
-    onCodeSent(value);
-  }
-
-  async function google() {
-    setBusy("google");
-    onGoogle(await signInWithGoogle());
+    setBusy(true);
+    try {
+      await api.requestCode(value);
+      onCodeSent(value);
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
   }
 
   return (
@@ -98,20 +84,21 @@ function LoginStep({
           spellCheck={false}
           autoCapitalize="off"
           value={email}
-          aria-invalid={invalid || undefined}
-          aria-describedby={invalid ? "email-error" : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "email-error" : undefined}
           onChange={(e) => {
             setEmail(e.target.value);
-            setInvalid(false);
+            setError(null);
           }}
         />
-        {invalid && <ErrorMessage id="email-error">Enter a valid email address.</ErrorMessage>}
-        <Button variant="primary" type="submit" loading={busy === "email"} disabled={busy !== null}>
+        {error && <ErrorMessage id="email-error">{error}</ErrorMessage>}
+        <Button variant="primary" type="submit" loading={busy} disabled={busy}>
           Continue with Email
         </Button>
       </form>
       <div className="divider">or</div>
-      <Button onClick={google} loading={busy === "google"} disabled={busy !== null}>
+      {/* Google sign-in isn't wired up yet; the button is kept on purpose. */}
+      <Button disabled={busy}>
         <GoogleIcon />
         <span>Continue with Google</span>
       </Button>
@@ -121,23 +108,31 @@ function LoginStep({
 
 function VerifyStep({
   email,
-  onVerified,
+  onSignedIn,
+  onNewAccount,
   onRestart,
 }: {
   email: string;
-  onVerified: () => void;
+  onSignedIn: (session: Session) => void;
+  onNewAccount: (signupToken: string) => void;
   onRestart: () => void;
 }) {
   const [status, setStatus] = useState<"idle" | "checking" | "failed">("idle");
+  const [error, setError] = useState<string | null>(null);
   const backRef = useRef<HTMLButtonElement>(null);
 
   async function check(code: string) {
     setStatus("checking");
-    if (await verifyCode(email, code)) {
-      onVerified();
-      return;
+    setError(null);
+    try {
+      const result = await api.verifyCode(email, code);
+      if (result.status === "signed-in") onSignedIn(result.session);
+      else onNewAccount(result.signupToken);
+    } catch (err) {
+      // Any attempt uses the code up, so every failure means going back for a fresh code.
+      setError(errorMessage(err));
+      setStatus("failed");
     }
-    setStatus("failed");
   }
 
   useEffect(() => {
@@ -165,11 +160,7 @@ function VerifyStep({
             <span>Verifying…</span>
           </div>
         )}
-        {status === "failed" && (
-          <ErrorMessage>
-            That code is incorrect and can't be retried. Go back to get a new code.
-          </ErrorMessage>
-        )}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
         <Button ref={backRef} variant="ghost" onClick={onRestart}>
           Use a different email
         </Button>
@@ -179,23 +170,21 @@ function VerifyStep({
 }
 
 function ProfileStep({
-  prefill,
-  onSaved,
+  signupToken,
+  onSignedIn,
   onRestart,
 }: {
-  prefill: string;
-  onSaved: (name: string) => void;
+  signupToken: string;
+  onSignedIn: (session: Session) => void;
   onRestart: () => void;
 }) {
-  const [name, setName] = useState(prefill);
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const input = nameRef.current;
-    if (!input) return;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
+    nameRef.current?.focus();
   }, []);
 
   async function submit(e: FormEvent) {
@@ -203,8 +192,13 @@ function ProfileStep({
     const value = name.trim();
     if (!value) return;
     setBusy(true);
-    await saveName(value);
-    onSaved(value);
+    setError(null);
+    try {
+      onSignedIn(await api.signup(signupToken, value));
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
   }
 
   return (
@@ -224,31 +218,14 @@ function ProfileStep({
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <Button variant="primary" type="submit" loading={busy} disabled={!name.trim()}>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        <Button variant="primary" type="submit" loading={busy} disabled={busy || !name.trim()}>
           Continue
         </Button>
         <Button variant="ghost" onClick={onRestart} disabled={busy}>
           Use a different email
         </Button>
       </form>
-    </Section>
-  );
-}
-
-function DoneStep({ firstName, onLogOut }: { firstName: string; onLogOut: () => void }) {
-  return (
-    <Section
-      title={`Welcome, ${firstName}`}
-      before={
-        <div className="done-mark">
-          <Mark />
-        </div>
-      }
-      lede="You're signed in. Your droid is ready."
-    >
-      <Button variant="ghost" onClick={onLogOut}>
-        Log out
-      </Button>
     </Section>
   );
 }
