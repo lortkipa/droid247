@@ -1,0 +1,27 @@
+{
+  "name": "droid247",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @droid247/server --filter @droid247/web run dev",
+    "dev:desktop": "pnpm --parallel --filter @droid247/server --filter @droid247/native run dev",
+    "build": "pnpm --filter @droid247/server --filter @droid247/web run build",
+    "start": "pnpm --parallel --filter @droid247/server --filter @droid247/web run start",
+    "build:desktop": "pnpm --filter @droid247/native run build",
+    "docker:up": "docker compose up --build",
+    "test": "vitest run",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
