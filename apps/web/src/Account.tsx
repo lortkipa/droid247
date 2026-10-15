@@ -1,5 +1,6 @@
 import type { User } from "@droid247/shared";
 import { useState } from "react";
+import { Avatar } from "./Avatar.tsx";
 import { api, errorMessage } from "./api.ts";
 
 /** Temporary signed-in page for testing auth. Deliberately unstyled. */
@@ -28,6 +29,7 @@ export function Account({ user, onSignedOut }: { user: User; onSignedOut: () => 
 
   return (
     <div>
+      <Avatar src={user.avatarUrl} size={64} />
       <p>Name: {user.name}</p>
       <p>Email: {user.email}</p>
       <button type="button" onClick={logOut} disabled={busy}>

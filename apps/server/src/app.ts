@@ -32,7 +32,7 @@ export function createApp(
     } satisfies HealthResponse),
   );
 
-  app.route("/", authRoutes(deps));
+  app.route("/", authRoutes({ returnOrigins: config.corsOrigins, ...deps }));
 
   return app;
 }

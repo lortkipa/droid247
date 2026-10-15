@@ -1,29 +1,67 @@
+import { createHash } from "node:crypto";
 import { AUTH_PATHS, CODE_TTL_MS, Session, User, VerifyCodeResponse } from "@droid247/shared";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "./app.ts";
 import { createStore, openDatabase } from "./db.ts";
+import type { GoogleIdentity, GoogleOAuth } from "./google.ts";
 import type { Mailer } from "./mailer.ts";
+
+const UI = "http://localhost:5173";
+const PHOTO = "https://lh3.googleusercontent.com/a/photo=s96-c";
 
 let clock: number;
 let sent: { to: string; code: string }[];
 let failMail: boolean;
+let identity: GoogleIdentity;
+let challenges: Map<string, string>;
 let app: ReturnType<typeof createApp>;
 
-beforeEach(() => {
-  clock = Date.UTC(2026, 0, 1);
-  sent = [];
-  failMail = false;
+/** Stands in for Google: any state is accepted, "good-code" is the only valid code. */
+const fakeGoogle: GoogleOAuth = {
+  authUrl(state, challenge) {
+    challenges.set(state, challenge);
+    return `https://google.test/auth?state=${state}`;
+  },
+  async exchange(code, verifier) {
+    if (code !== "good-code") throw new Error("bad code");
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    if (![...challenges.values()].includes(challenge)) throw new Error("PKCE mismatch");
+    return identity;
+  },
+};
+
+function makeApp(google: GoogleOAuth | null = fakeGoogle) {
   const mailer: Mailer = {
     async sendLoginCode(to, code) {
       if (failMail) throw new Error("SMTP down");
       sent.push({ to, code });
     },
   };
-  app = createApp(
-    { corsOrigins: [] },
-    { store: createStore(openDatabase(":memory:")), mailer, now: () => clock },
+  return createApp(
+    { corsOrigins: [UI] },
+    {
+      store: createStore(openDatabase(":memory:")),
+      mailer,
+      google: google ?? undefined,
+      now: () => clock,
+    },
     { log: false },
   );
+}
+
+beforeEach(() => {
+  clock = Date.UTC(2026, 0, 1);
+  sent = [];
+  failMail = false;
+  challenges = new Map();
+  identity = {
+    sub: "google-1",
+    email: "ada@example.com",
+    emailVerified: true,
+    name: "Ada Google",
+    picture: PHOTO,
+  };
+  app = makeApp();
 });
 
 function post(path: string, body: unknown, token?: string) {
@@ -209,5 +247,167 @@ describe("sessions", () => {
     const code = await requestCode("a@b.co");
     const result = VerifyCodeResponse.parse((await verify("a@b.co", code)).body);
     expect(result.status).toBe("new-account");
+  });
+});
+
+function location(res: Response): URL {
+  expect(res.status).toBe(302);
+  const value = res.headers.get("location");
+  if (!value) throw new Error("no redirect");
+  return new URL(value);
+}
+
+const startGoogle = (returnTo: string, nonce: string) =>
+  app.request(`${AUTH_PATHS.googleStart}?${new URLSearchParams({ return_to: returnTo, nonce })}`);
+
+/** Runs the browser half of a Google sign-in and returns where the browser lands. */
+async function googleRedirect(
+  { nonce = "nonce-1", returnTo = UI, code = "good-code" } = {},
+  callbackParams?: Record<string, string>,
+): Promise<URL> {
+  const state = location(await startGoogle(returnTo, nonce)).searchParams.get("state") ?? "";
+  const params = new URLSearchParams(callbackParams ?? { state, code });
+  if (callbackParams) params.set("state", state);
+  return location(await app.request(`${AUTH_PATHS.googleCallback}?${params}`));
+}
+
+async function googleTicket(nonce = "nonce-1"): Promise<string> {
+  const ticket = (await googleRedirect({ nonce })).searchParams.get("google_ticket");
+  if (!ticket) throw new Error("no ticket");
+  return ticket;
+}
+
+async function googleFinish(ticket: string, nonce = "nonce-1") {
+  const res = await post(AUTH_PATHS.googleFinish, { ticket, nonce });
+  return { status: res.status, body: (await res.json()) as unknown };
+}
+
+async function googleSignUp(name: string): Promise<Session> {
+  const result = VerifyCodeResponse.parse((await googleFinish(await googleTicket())).body);
+  if (result.status !== "new-account") throw new Error("expected new account");
+  const res = await post(AUTH_PATHS.signup, { signupToken: result.signupToken, name });
+  expect(res.status).toBe(200);
+  return Session.parse(await res.json());
+}
+
+describe("Google sign-in", () => {
+  it("suggests the Google name for a new account and keeps the photo", async () => {
+    const result = VerifyCodeResponse.parse((await googleFinish(await googleTicket())).body);
+    expect(result).toMatchObject({
+      status: "new-account",
+      name: "Ada Google",
+      avatarUrl: "https://lh3.googleusercontent.com/a/photo=s256-c",
+    });
+    if (result.status !== "new-account") return;
+
+    // The suggested name can be changed.
+    const res = await post(AUTH_PATHS.signup, { signupToken: result.signupToken, name: "Ada" });
+    const session = Session.parse(await res.json());
+    expect(session.user).toMatchObject({
+      email: "ada@example.com",
+      name: "Ada",
+      avatarUrl: "https://lh3.googleusercontent.com/a/photo=s256-c",
+    });
+  });
+
+  it("signs a returning Google user straight in", async () => {
+    const first = await googleSignUp("Ada");
+    const again = VerifyCodeResponse.parse((await googleFinish(await googleTicket())).body);
+    expect(again.status).toBe("signed-in");
+    if (again.status === "signed-in") expect(again.session.user).toEqual(first.user);
+  });
+
+  it("finds the account by Google id even if the Google email changed", async () => {
+    const first = await googleSignUp("Ada");
+    identity = { ...identity, email: "ada@new.example" };
+    const again = VerifyCodeResponse.parse((await googleFinish(await googleTicket())).body);
+    if (again.status !== "signed-in") throw new Error("expected sign-in");
+    expect(again.session.user.id).toBe(first.user.id);
+  });
+
+  it("keeps the name and default avatar of an account made with an email code", async () => {
+    const emailUser = await signUp("ada@example.com", "Ada Email");
+    identity = { ...identity, email: "Ada@Example.com" };
+    const result = VerifyCodeResponse.parse((await googleFinish(await googleTicket())).body);
+    if (result.status !== "signed-in") throw new Error("expected sign-in");
+    expect(result.session.user).toEqual({ ...emailUser.user, avatarUrl: null });
+    expect(result.session.user.name).toBe("Ada Email");
+
+    // Linked: the second Google sign-in matches by Google id and still changes nothing.
+    const again = VerifyCodeResponse.parse((await googleFinish(await googleTicket())).body);
+    if (again.status !== "signed-in") throw new Error("expected sign-in");
+    expect(again.session.user).toEqual(emailUser.user);
+  });
+
+  it("keeps the Google name and photo when signing in with an email code", async () => {
+    const googleUser = await googleSignUp("Ada G");
+    const code = await requestCode("ada@example.com");
+    const result = VerifyCodeResponse.parse((await verify("ada@example.com", code)).body);
+    if (result.status !== "signed-in") throw new Error("expected sign-in");
+    expect(result.session.user).toEqual(googleUser.user);
+    expect(result.session.user.avatarUrl).toMatch(/googleusercontent/);
+  });
+
+  it("only lets the app that started the sign-in claim the ticket", async () => {
+    const ticket = await googleTicket("mine");
+    expect(await googleFinish(ticket, "someone-else")).toMatchObject({
+      status: 400,
+      body: { error: "google_failed" },
+    });
+    // The failed attempt used the ticket up.
+    expect((await googleFinish(ticket, "mine")).status).toBe(400);
+  });
+
+  it("accepts a ticket once", async () => {
+    const ticket = await googleTicket();
+    expect((await googleFinish(ticket)).status).toBe(200);
+    expect(await googleFinish(ticket)).toMatchObject({ body: { error: "google_failed" } });
+  });
+
+  it("expires tickets after 2 minutes", async () => {
+    const ticket = await googleTicket();
+    clock += 2 * 60_000;
+    expect(await googleFinish(ticket)).toMatchObject({ body: { error: "google_failed" } });
+  });
+
+  it("only returns to the UI or a loopback address", async () => {
+    expect((await startGoogle("https://evil.example/", "n")).status).toBe(400);
+    expect((await startGoogle("http://localhost:5173.evil.example/", "n")).status).toBe(400);
+    expect((await startGoogle("not a url", "n")).status).toBe(400);
+
+    const loopback = await googleRedirect({ returnTo: "http://127.0.0.1:4567/" });
+    expect(loopback.origin).toBe("http://127.0.0.1:4567");
+    expect(loopback.searchParams.get("google_ticket")).toBeTruthy();
+  });
+
+  it("refuses an unverified Google email", async () => {
+    identity = { ...identity, emailVerified: false };
+    const landed = await googleRedirect();
+    expect(landed.searchParams.get("google_error")).toBe("unverified");
+    expect(landed.searchParams.get("google_ticket")).toBeNull();
+  });
+
+  it("reports a cancelled sign-in", async () => {
+    const landed = await googleRedirect({}, { error: "access_denied" });
+    expect(`${landed.origin}${landed.pathname}`).toBe(`${UI}/`);
+    expect(landed.searchParams.get("google_error")).toBe("cancelled");
+  });
+
+  it("reports a failed code exchange", async () => {
+    const landed = await googleRedirect({ code: "bad-code" });
+    expect(landed.searchParams.get("google_error")).toBe("failed");
+  });
+
+  it("rejects an unknown or reused state", async () => {
+    const state = location(await startGoogle(UI, "n")).searchParams.get("state") ?? "";
+    const callback = `${AUTH_PATHS.googleCallback}?${new URLSearchParams({ state, code: "good-code" })}`;
+    expect((await app.request(callback)).status).toBe(302);
+    expect((await app.request(callback)).status).toBe(400);
+  });
+
+  it("reports when Google isn't configured", async () => {
+    app = makeApp(null);
+    const landed = location(await startGoogle(UI, "n"));
+    expect(landed.searchParams.get("google_error")).toBe("unavailable");
   });
 });

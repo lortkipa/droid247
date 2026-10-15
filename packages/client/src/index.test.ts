@@ -54,10 +54,15 @@ describe("auth calls", () => {
       getToken: () => "tok",
       fetch: async (_url, init) => {
         seen = new Headers(init?.headers);
-        return Response.json({ id: "1", email: "a@b.co", name: "Ada" });
+        return Response.json({ id: "1", email: "a@b.co", name: "Ada", avatarUrl: null });
       },
     });
-    await expect(client.me()).resolves.toEqual({ id: "1", email: "a@b.co", name: "Ada" });
+    await expect(client.me()).resolves.toEqual({
+      id: "1",
+      email: "a@b.co",
+      name: "Ada",
+      avatarUrl: null,
+    });
     expect(seen?.get("authorization")).toBe("Bearer tok");
   });
 
@@ -86,5 +91,36 @@ describe("auth calls", () => {
       code: "invalid_code",
       message: "That code is incorrect.",
     });
+  });
+});
+
+describe("Google sign-in", () => {
+  it("builds the start URL", () => {
+    const client = createApiClient({ baseUrl: "http://x/" });
+    const url = new URL(client.googleStartUrl("http://localhost:5173", "n1"));
+    expect(url.origin + url.pathname).toBe("http://x/auth/google/start");
+    expect(url.searchParams.get("return_to")).toBe("http://localhost:5173");
+    expect(url.searchParams.get("nonce")).toBe("n1");
+  });
+
+  it("posts the ticket and nonce and parses a new-account answer", async () => {
+    let sent: unknown;
+    const client = createApiClient({
+      baseUrl: "http://x",
+      fetch: async (_url, init) => {
+        sent = JSON.parse(String(init?.body));
+        return Response.json({
+          status: "new-account",
+          signupToken: "s",
+          name: "Ada",
+          avatarUrl: "https://lh3.googleusercontent.com/a/x=s256-c",
+        });
+      },
+    });
+    await expect(client.googleFinish("t", "n")).resolves.toMatchObject({
+      status: "new-account",
+      name: "Ada",
+    });
+    expect(sent).toEqual({ ticket: "t", nonce: "n" });
   });
 });

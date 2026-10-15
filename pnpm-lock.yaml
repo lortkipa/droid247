@@ -57,6 +57,9 @@ importers:
       '@droid247/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@fabianlars/tauri-plugin-oauth':
+        specifier: ^2.1.0
+        version: 2.1.0
       '@fontsource/geist':
         specifier: ^5.3.0
         version: 5.3.0
@@ -312,6 +315,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fabianlars/tauri-plugin-oauth@2.1.0':
+    resolution: {integrity: sha512-KElVn5VWJ7FPTbWvZ38NNWsxTMQ4wKNnWSB75eIh/CwO0RLLNH1eL3POdulluiaS4f0TWGdkL9nlD2ZKhi8DIQ==}
 
   '@fontsource/geist-mono@5.3.0':
     resolution: {integrity: sha512-UtJ1BBBCVpMYdIcW7nEB45UAoAw5M53ZXs2t0ciPW+IokuAAIc56M8+kW5tXbRJCTpDw4XTtU7proT6NdQAHTg==}
@@ -1384,6 +1390,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@fabianlars/tauri-plugin-oauth@2.1.0':
+    dependencies:
+      '@tauri-apps/api': 2.12.4
 
   '@fontsource/geist-mono@5.3.0': {}
 

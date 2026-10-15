@@ -12,6 +12,7 @@
   "dependencies": {
     "@droid247/client": "workspace:*",
     "@droid247/shared": "workspace:*",
+    "@fabianlars/tauri-plugin-oauth": "^2.1.0",
     "@fontsource/geist": "^5.3.0",
     "@fontsource/geist-mono": "^5.3.0",
     "@tauri-apps/api": "^2.12.4",

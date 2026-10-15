@@ -5,7 +5,7 @@
  * builds update slower than the server, so clients refuse to talk to a server
  * whose major differs from theirs and tell the user to update.
  */
-export const API_VERSION = "1.1";
+export const API_VERSION = "1.2";
 
 export function apiMajor(version: string): number {
   return Number.parseInt(version.split(".")[0] ?? "", 10);

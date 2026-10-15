@@ -15,6 +15,24 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+# `generate_context!` embeds plugin config (deep-link) as JSON.
+serde_json = "1"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+# Catches the redirect that ends a browser sign-in (Google) on a 127.0.0.1 port.
+tauri-plugin-oauth = "2"
+# `droid247://` links, which only bring the app back to the front after a browser sign-in.
+tauri-plugin-deep-link = "2"
+
+# Windows hands a `droid247://` link to a new process; this forwards it to the running one.
+[target.'cfg(windows)'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+# Wayland focus handoff (xdg-activation tokens) goes through GTK, which Tauri already uses.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+gio = "0.18"
 
 [profile.release]
 codegen-units = 1
