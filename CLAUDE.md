@@ -13,7 +13,7 @@ Planned targets:
 ## Current status
 
 - No code written yet. Tech stack, architecture, and repo layout are undecided.
-- No logo or branding assets.
+- Logo: **One Eye Open** (black-and-white droid face, one eye closed, one open) with a custom wordmark. Final logo files are in `brand/logo/` and app icons for every platform are in `brand/icons/`; see `brand/README.md`. Regenerate with `python3 brand/build_brand.py`.
 - No fixed roadmap. Direction is being worked out as the project goes, so suggest options rather than assuming a settled plan.
 
 ## Domain
