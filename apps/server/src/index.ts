@@ -1,9 +1,17 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
+import { createStore, openDatabase } from "./db.ts";
+import { consoleMailer, createSmtpMailer } from "./mailer.ts";
 
 const config = loadConfig();
-const app = createApp(config);
+const db = openDatabase(config.databasePath);
+
+if (!config.smtp) {
+  console.warn("SMTP_HOST is not set: sign-in codes will be printed here instead of emailed.");
+}
+const mailer = config.smtp ? createSmtpMailer(config.smtp) : consoleMailer;
+const app = createApp(config, { store: createStore(db), mailer });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
   console.log(`droid247 server listening on http://${info.address}:${info.port}`);
@@ -11,7 +19,10 @@ const server = serve({ fetch: app.fetch, port: config.port, hostname: config.hos
 
 function shutdown(signal: string) {
   console.log(`${signal} received, shutting down`);
-  server.close(() => process.exit(0));
+  server.close(() => {
+    db.close();
+    process.exit(0);
+  });
   // Don't hang forever on keep-alive connections.
   setTimeout(() => process.exit(0), 5000).unref();
 }

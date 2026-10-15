@@ -6,6 +6,9 @@ dist/
 !.env.example
 coverage/
 
+# Local SQLite database (apps/server, DATABASE_PATH)
+apps/server/data/
+
 # Tauri / Rust
 apps/native/src-tauri/target/
 apps/native/src-tauri/gen/schemas/

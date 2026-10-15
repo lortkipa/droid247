@@ -5,7 +5,15 @@ services:
       dockerfile: apps/server/Dockerfile
     ports:
       - "8787:8787"
+    env_file:
+      - path: .env
+        required: false
     environment:
       PORT: 8787
       # CORS_ORIGINS: https://app.example.com,tauri://localhost,http://tauri.localhost
+    volumes:
+      - data:/app/data
     restart: unless-stopped
+
+volumes:
+  data:

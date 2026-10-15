@@ -3,6 +3,7 @@
 **/target
 .git
 brand
+!brand/email
 *.log
 .env
 .env.*

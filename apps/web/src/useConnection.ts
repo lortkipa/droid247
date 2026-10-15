@@ -1,8 +1,6 @@
-import { ApiError, createApiClient, type HealthResult } from "@droid247/client";
+import { ApiError, type HealthResult } from "@droid247/client";
 import { useCallback, useEffect, useState } from "react";
-import { API_URL } from "./config.ts";
-
-const api = createApiClient({ baseUrl: API_URL });
+import { api } from "./api.ts";
 
 export type ConnectionState =
   | { status: "checking" }

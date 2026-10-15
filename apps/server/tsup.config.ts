@@ -9,4 +9,6 @@ export default defineConfig({
   sourcemap: true,
   // Workspace packages ship TypeScript source, so they must be bundled in.
   noExternal: [/^@droid247\//],
+  // `sqlite` only exists as `node:sqlite`, so the prefix must survive bundling.
+  removeNodeProtocol: false,
 });
