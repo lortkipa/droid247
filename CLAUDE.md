@@ -12,7 +12,8 @@ Planned targets:
 
 ## Current status
 
-- Skeleton only: the web and desktop apps connect to the backend and show the connection status (`GET /health`). No agent features yet. Mobile is deferred, but the structure is ready for it (see below).
+- Skeleton only: the UI is the login flow (email → 6-digit code → name → welcome, plus "Continue with Google"). Auth is **mocked client-side** in `apps/web/src/mockAuth.ts` (code `123456` passes), since the server has no auth endpoints yet. No backend status is shown in the UI; `apps/web/src/useConnection.ts` (`GET /health`) is kept but currently unused. No agent features yet. Mobile is deferred, but the structure is ready for it (see below).
+- Theme: light/dark follows the OS setting via `prefers-color-scheme`. There is deliberately no in-app theme toggle.
 - Logo: **One Eye Open** (black-and-white droid face, one eye closed, one open) with a custom wordmark. Final logo files are in `brand/logo/` and app icons for every platform are in `brand/icons/`; see `brand/README.md`. Regenerate with `python3 brand/build_brand.py`.
 - No fixed roadmap. Direction is being worked out as the project goes, so suggest options rather than assuming a settled plan.
 
@@ -30,6 +31,7 @@ Conventions:
 - Internal packages export TS source (`"exports": "./src/index.ts"`), with no build step of their own.
 - The backend URL is never same-origin: the UI reads `VITE_API_URL` (fallback `http://localhost:8787`).
 - Favicons/app icons are referenced straight from `brand/icons/` (Vite `publicDir`, Tauri `bundle.icon`). Don't copy them.
+- UI font is Geist / Geist Mono, self-hosted via `@fontsource/*` (no Google Fonts requests, so desktop works offline).
 - Lint/format with Biome, tests with Vitest (`*.test.ts` next to the code), and run `pnpm typecheck` before committing.
 - The Tauri bundle identifier is `ai.droid247.app`. Bundle IDs are effectively permanent once an app ships to stores.
 
@@ -40,3 +42,4 @@ The planned domain is `droid247.ai`. It has **not** been purchased yet; the plan
 ## Notes for Claude
 
 - Update this file as decisions are made (stack, structure, build/test commands, conventions).
+- Dev servers: if you start one for testing, stop it when done. Never stop a server that was already running (it is the user's).
