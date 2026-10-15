@@ -41,7 +41,7 @@ pnpm install
 
 ## Sign-in
 
-Email + one-time code, handled by the server (`apps/server/src/auth.ts`):
+Email + one-time code, or Google, handled by the server (`apps/server/src/auth.ts`):
 
 | Endpoint | What it does |
 |---|---|
@@ -50,14 +50,19 @@ Email + one-time code, handled by the server (`apps/server/src/auth.ts`):
 | `POST /auth/signup` | Creates the account from a signup ticket plus a name. This is the only time the name is asked. |
 | `GET /auth/me` / `DELETE /auth/me` | The signed-in user / deletes the account. |
 | `POST /auth/logout` | Ends the current session. |
+| `GET /auth/google/start` | Browser navigation: sends the user to Google. `return_to` must be a UI origin from `CORS_ORIGINS` or a `http://127.0.0.1:<port>` loopback (the desktop app). |
+| `GET /auth/google/callback` | Google comes back here; the browser is sent on to `return_to?google_ticket=…` (or `google_error=…`). |
+| `POST /auth/google/finish` | Trades the ticket plus the nonce the app started with for a session, or a signup ticket with the Google name and photo. |
 
-Sessions are bearer tokens (`Authorization: Bearer …`), valid for 30 days. The UI keeps the token in `localStorage`. Accounts, codes and sessions live in SQLite (Node's built-in `node:sqlite`). Without SMTP settings the server prints codes to its console, which is all you need for local development. "Continue with Google" is not wired up yet.
+Sessions are bearer tokens (`Authorization: Bearer …`), valid for 30 days. The UI keeps the token in `localStorage`. Accounts, codes and sessions live in SQLite (Node's built-in `node:sqlite`). Without SMTP settings the server prints codes to its console, which is all you need for local development.
+
+Accounts are matched by email, so both methods reach the same account. Whichever method created the account sets its name and avatar (the Google photo, or a default silhouette for email accounts), and signing in with the other method never changes them. On the web, Google sign-in is a full-page redirect. The desktop app opens the system browser instead, because Google blocks embedded webviews, and catches the redirect on a `127.0.0.1` port (`tauri-plugin-oauth`). The page left in the browser then opens a `droid247://` link to bring the app back to the front; the browser asks before opening it the first time. Dev builds register that scheme on first run (on Linux, a handler file in `~/.local/share/applications`). The desktop app is single-instance: launching it again brings the open window forward. Google needs `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`; without them the button reports that it isn't set up.
 
 ## Configuration
 
 See [`.env.example`](.env.example).
 
-- **Backend:** `PORT` (default 8787), `HOST`, `CORS_ORIGINS`, `DATABASE_PATH`, and `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PASS`/`MAIL_FROM` for sending codes. Put them in `.env` at the repo root. The default CORS list allows the Vite dev/preview servers and the Tauri webview origins. Docker keeps the database in the `data` volume.
+- **Backend:** `PORT` (default 8787), `HOST`, `CORS_ORIGINS`, `DATABASE_PATH`, and `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PASS`/`MAIL_FROM` for sending codes, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`PUBLIC_URL` for Google sign-in. Put them in `.env` at the repo root. The default CORS list allows the Vite dev/preview servers and the Tauri webview origins. Docker keeps the database in the `data` volume.
 - **UI / desktop builds:** `VITE_API_URL` is baked in at build time and falls back to `http://localhost:8787`. For a real deployment, set it in `apps/web/.env.production.local` or the environment before `pnpm build` / `pnpm build:desktop`.
 
 ## Adding mobile later

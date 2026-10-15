@@ -158,6 +158,21 @@ export function createApiClient({
       return parse(Session, body, "signup");
     },
 
+    /**
+     * Address to open in a browser to sign in with Google. The server sends the
+     * browser back to `returnTo` with a `google_ticket` (or `google_error`) query parameter.
+     */
+    googleStartUrl(returnTo: string, nonce: string): string {
+      const params = new URLSearchParams({ return_to: returnTo, nonce });
+      return `${root}${AUTH_PATHS.googleStart}?${params}`;
+    },
+
+    /** Claims a finished Google sign-in. `nonce` must be the one passed to `googleStartUrl`. */
+    async googleFinish(ticket: string, nonce: string): Promise<VerifyCodeResponse> {
+      const body = await request("POST", AUTH_PATHS.googleFinish, { body: { ticket, nonce } });
+      return parse(VerifyCodeResponse, body, "Google sign-in");
+    },
+
     async me(): Promise<User> {
       return parse(User, await request("GET", AUTH_PATHS.me, { auth: true }), "user");
     },

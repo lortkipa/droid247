@@ -9,6 +9,13 @@ export interface SmtpConfig {
   from: string;
 }
 
+export interface GoogleConfig {
+  clientId: string;
+  clientSecret: string;
+  /** This server's public base URL; Google redirects to `<publicUrl>/auth/google/callback`. */
+  publicUrl: string;
+}
+
 export interface ServerConfig {
   port: number;
   host: string;
@@ -16,6 +23,8 @@ export interface ServerConfig {
   databasePath: string;
   /** Unset means codes are printed to the console instead of emailed. */
   smtp?: SmtpConfig;
+  /** Unset means "Continue with Google" reports that it isn't available. */
+  google?: GoogleConfig;
 }
 
 const DEFAULT_CORS_ORIGINS = [
@@ -50,9 +59,22 @@ function loadSmtp(env: NodeJS.ProcessEnv): SmtpConfig | undefined {
   };
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
+function loadGoogle(env: NodeJS.ProcessEnv, port: number): GoogleConfig | undefined {
+  if (!env.GOOGLE_CLIENT_ID && !env.GOOGLE_CLIENT_SECRET) return undefined;
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    throw new Error("Set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither");
+  }
   return {
-    port: parsePort("PORT", env.PORT, 8787),
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+    publicUrl: (env.PUBLIC_URL || `http://localhost:${port}`).replace(/\/+$/, ""),
+  };
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
+  const port = parsePort("PORT", env.PORT, 8787);
+  return {
+    port,
     host: env.HOST ?? "0.0.0.0",
     corsOrigins: env.CORS_ORIGINS
       ? env.CORS_ORIGINS.split(",")
@@ -61,5 +83,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       : DEFAULT_CORS_ORIGINS,
     databasePath: env.DATABASE_PATH || "data/droid247.db",
     smtp: loadSmtp(env),
+    google: loadGoogle(env, port),
   };
 }

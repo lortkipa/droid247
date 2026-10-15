@@ -1,22 +1,60 @@
-import { isValidEmail, type Session } from "@droid247/shared";
+import { isValidEmail, type Session, type VerifyCodeResponse } from "@droid247/shared";
 import { type FormEvent, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "./api.ts";
+import {
+  forgetReturnedGoogleSignIn,
+  googleErrorMessage,
+  returnedGoogleSignIn,
+  signInWithGoogle,
+} from "./google.ts";
 import { OtpInput } from "./OtpInput.tsx";
+import { browserSignInIsExternal } from "./platform.ts";
 
 type Step =
-  | { name: "login" }
+  | { name: "login"; googleError?: string }
+  /** Back from Google on the web, claiming the result. */
+  | { name: "google-return" }
   | { name: "verify"; email: string }
-  | { name: "profile"; signupToken: string };
+  | {
+      name: "profile";
+      signupToken: string;
+      /** Set for Google sign-ups: the Google name, prefilled but editable. */
+      google?: { name?: string };
+    };
 
-/** Sign-in flow: email → one-time code → (new accounts only) name. */
+/** Sign-in flow: email → one-time code, or Google → (new accounts only) name. */
 export function Login({ onSignedIn }: { onSignedIn: (session: Session) => void }) {
-  const [step, setStep] = useState<Step>({ name: "login" });
+  const [step, setStep] = useState<Step>(() =>
+    returnedGoogleSignIn() ? { name: "google-return" } : { name: "login" },
+  );
   const restart = () => setStep({ name: "login" });
+
+  function onGoogleResult(result: VerifyCodeResponse) {
+    if (result.status === "signed-in") onSignedIn(result.session);
+    else {
+      setStep({ name: "profile", signupToken: result.signupToken, google: { name: result.name } });
+    }
+  }
 
   // Keyed by step so each one remounts and replays the enter animation.
   switch (step.name) {
     case "login":
-      return <LoginStep key="login" onCodeSent={(email) => setStep({ name: "verify", email })} />;
+      return (
+        <LoginStep
+          key="login"
+          googleError={step.googleError}
+          onCodeSent={(email) => setStep({ name: "verify", email })}
+          onGoogleResult={onGoogleResult}
+        />
+      );
+    case "google-return":
+      return (
+        <GoogleReturnStep
+          key="google-return"
+          onResult={onGoogleResult}
+          onFailed={(googleError) => setStep({ name: "login", googleError })}
+        />
+      );
     case "verify":
       return (
         <VerifyStep
@@ -32,6 +70,7 @@ export function Login({ onSignedIn }: { onSignedIn: (session: Session) => void }
         <ProfileStep
           key="profile"
           signupToken={step.signupToken}
+          google={step.google}
           onSignedIn={onSignedIn}
           onRestart={restart}
         />
@@ -39,10 +78,20 @@ export function Login({ onSignedIn }: { onSignedIn: (session: Session) => void }
   }
 }
 
-function LoginStep({ onCodeSent }: { onCodeSent: (email: string) => void }) {
+function LoginStep({
+  googleError: initialGoogleError,
+  onCodeSent,
+  onGoogleResult,
+}: {
+  googleError?: string;
+  onCodeSent: (email: string) => void;
+  onGoogleResult: (result: VerifyCodeResponse) => void;
+}) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [google, setGoogle] = useState<AbortController | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(initialGoogleError ?? null);
   const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,6 +115,23 @@ function LoginStep({ onCodeSent }: { onCodeSent: (email: string) => void }) {
       setBusy(false);
     }
   }
+
+  async function continueWithGoogle() {
+    const controller = new AbortController();
+    setGoogle(controller);
+    setGoogleError(null);
+    try {
+      const result = await signInWithGoogle(controller.signal);
+      if (result) onGoogleResult(result);
+      // No result: cancelled, or (web) the page is on its way to Google.
+      else if (controller.signal.aborted) setGoogle(null);
+    } catch (err) {
+      setGoogleError(googleErrorMessage(err));
+      setGoogle(null);
+    }
+  }
+
+  const waiting = google !== null;
 
   return (
     <Section title="Log in to droid247">
@@ -92,16 +158,26 @@ function LoginStep({ onCodeSent }: { onCodeSent: (email: string) => void }) {
           }}
         />
         {error && <ErrorMessage id="email-error">{error}</ErrorMessage>}
-        <Button variant="primary" type="submit" loading={busy} disabled={busy}>
+        <Button variant="primary" type="submit" loading={busy} disabled={busy || waiting}>
           Continue with Email
         </Button>
       </form>
       <div className="divider">or</div>
-      {/* Google sign-in isn't wired up yet; the button is kept on purpose. */}
-      <Button disabled={busy}>
-        <GoogleIcon />
-        <span>Continue with Google</span>
-      </Button>
+      <div className="stack">
+        <Button onClick={continueWithGoogle} loading={waiting} disabled={busy || waiting}>
+          <GoogleIcon />
+          <span>Continue with Google</span>
+        </Button>
+        {googleError && <ErrorMessage>{googleError}</ErrorMessage>}
+        {waiting && browserSignInIsExternal() && (
+          <>
+            <p className="hint">Finish signing in in your browser.</p>
+            <Button variant="ghost" onClick={() => google.abort()}>
+              Cancel
+            </Button>
+          </>
+        )}
+      </div>
     </Section>
   );
 }
@@ -169,22 +245,70 @@ function VerifyStep({
   );
 }
 
+/** Claims the Google sign-in this page load returned from. */
+function GoogleReturnStep({
+  onResult,
+  onFailed,
+}: {
+  onResult: (result: VerifyCodeResponse) => void;
+  onFailed: (message: string | undefined) => void;
+}) {
+  useEffect(() => {
+    const pending = returnedGoogleSignIn();
+    if (!pending) {
+      onFailed(undefined);
+      return;
+    }
+    let cancelled = false;
+    pending.then(
+      (result) => {
+        if (cancelled) return;
+        forgetReturnedGoogleSignIn();
+        onResult(result);
+      },
+      (err) => {
+        if (cancelled) return;
+        forgetReturnedGoogleSignIn();
+        onFailed(googleErrorMessage(err) ?? undefined);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [onResult, onFailed]);
+
+  return (
+    <Section title="Signing in with Google">
+      <div className="checking-row">
+        <span className="mini-spin" />
+        <span>Just a moment…</span>
+      </div>
+    </Section>
+  );
+}
+
 function ProfileStep({
   signupToken,
+  google,
   onSignedIn,
   onRestart,
 }: {
   signupToken: string;
+  google?: { name?: string };
   onSignedIn: (session: Session) => void;
   onRestart: () => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(google?.name ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    nameRef.current?.focus();
+    const input = nameRef.current;
+    if (!input) return;
+    input.focus();
+    // A name filled in from Google is ready to edit: caret at the end.
+    input.setSelectionRange(input.value.length, input.value.length);
   }, []);
 
   async function submit(e: FormEvent) {
@@ -223,7 +347,7 @@ function ProfileStep({
           Continue
         </Button>
         <Button variant="ghost" onClick={onRestart} disabled={busy}>
-          Use a different email
+          {google ? "Use a different account" : "Use a different email"}
         </Button>
       </form>
     </Section>
