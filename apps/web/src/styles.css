@@ -18,6 +18,12 @@
   --error-ring: rgba(212, 40, 31, 0.14);
   --avatar-bg: #d9d9d9;
   --avatar-fg: #ffffff;
+  --control-bg: #f2f2f2;
+  --control-hover: #e6e6e6;
+  --control-active: #d9d9d9;
+  --close-hover: #e5484d;
+  --close-hover-fg: #ffffff;
+  --window-edge: rgba(0, 0, 0, 0.16);
   color-scheme: light dark;
 }
 
@@ -41,6 +47,10 @@
     --error-ring: rgba(255, 107, 97, 0.16);
     --avatar-bg: #2e2e2e;
     --avatar-fg: #6e6e6e;
+    --control-bg: #171717;
+    --control-hover: #262626;
+    --control-active: #333333;
+    --window-edge: rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -95,6 +105,8 @@ input {
   background: none;
   color: var(--fg);
   cursor: pointer;
+  /* Above the title bar's drag strip. */
+  z-index: 11;
 }
 .brand:focus-visible {
   outline: none;
@@ -126,6 +138,82 @@ footer {
   font-size: 12px;
   color: var(--subtle);
   pointer-events: none;
+}
+
+/* ---- window chrome (desktop app) ---- */
+
+/* An invisible strip to drag the window by; see TitleBar.tsx. */
+.titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 10;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.window-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+}
+.window-controls button {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--control-bg);
+  color: var(--muted);
+  cursor: default;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.window-controls button:hover {
+  background: var(--control-hover);
+  color: var(--fg);
+}
+.window-controls button:active {
+  background: var(--control-active);
+}
+.window-controls button.close:hover,
+.window-controls button.close:active {
+  background: var(--close-hover);
+  color: var(--close-hover-fg);
+}
+.window-controls button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+.window-controls svg {
+  width: 8px;
+  height: 8px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+/* macOS draws its traffic lights top-left (tauri.macos.conf.json); keep the mark clear of them. */
+[data-titlebar="overlay"] .brand {
+  left: 92px;
+}
+
+/* Linux windows without decorations get no shadow, so draw an edge to set them apart. */
+[data-os="linux"]:not([data-maximized]) body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  border: 1px solid var(--window-edge);
+  pointer-events: none;
+  z-index: 100;
 }
 
 /* ---- steps ---- */

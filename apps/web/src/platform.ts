@@ -1,5 +1,6 @@
 import { cancel, onUrl, start } from "@fabianlars/tauri-plugin-oauth";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export type Platform = "web" | "desktop" | "mobile";
 
@@ -12,6 +13,56 @@ export function getPlatform(): Platform {
   const os = import.meta.env.TAURI_ENV_PLATFORM;
   return os === "android" || os === "ios" ? "mobile" : "desktop";
 }
+
+export type DesktopOs = "linux" | "windows" | "macos";
+
+/** The desktop OS, or null outside the desktop app. */
+export function getDesktopOs(): DesktopOs | null {
+  if (getPlatform() !== "desktop") return null;
+  const os = import.meta.env.TAURI_ENV_PLATFORM;
+  if (os === "darwin") return "macos";
+  return os === "windows" ? "windows" : "linux";
+}
+
+/**
+ * Who draws the window controls:
+ * - native: the browser or phone (nothing for us to do)
+ * - overlay: macOS, whose traffic lights float over the page
+ * - custom: Linux and Windows, where the window has no decorations and the UI draws them
+ */
+export type TitleBar = "native" | "overlay" | "custom";
+
+export function getTitleBar(): TitleBar {
+  const os = getDesktopOs();
+  if (!os) return "native";
+  return os === "macos" ? "overlay" : "custom";
+}
+
+/** The desktop window. Only call these when `getTitleBar()` isn't "native". */
+export const appWindow = {
+  minimize: () => getCurrentWindow().minimize(),
+  toggleMaximize: () => getCurrentWindow().toggleMaximize(),
+  // There's only one window, so closing it quits the app.
+  close: () => getCurrentWindow().close(),
+  /** Calls `onChange` with the current state and again whenever it may have changed. */
+  onMaximizedChange(onChange: (maximized: boolean) => void): () => void {
+    const window = getCurrentWindow();
+    let stopped = false;
+    const report = () =>
+      window.isMaximized().then(
+        (maximized) => {
+          if (!stopped) onChange(maximized);
+        },
+        () => {},
+      );
+    report();
+    const unlisten = window.onResized(report);
+    return () => {
+      stopped = true;
+      unlisten.then((fn) => fn());
+    };
+  },
+};
 
 /** Whether `openBrowserSignIn` waits on a separate browser (rather than leaving this page). */
 export function browserSignInIsExternal(): boolean {
