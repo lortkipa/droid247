@@ -1,10 +1,13 @@
 import type { HealthStatus } from '@droid247/shared';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
+import { Button } from '@/components/Button';
+import { Screen } from '@/components/Screen';
 import { api, apiUrl } from '@/lib/api';
-import { colors } from '@/lib/theme';
+import { useAuth, useAuthStage } from '@/lib/auth';
+import { brand, fonts, textMetrics, typography, useTheme } from '@/lib/theme';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -20,7 +23,10 @@ function formatUptime(totalSeconds: number): string {
   return h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-export default function StatusScreen() {
+export default function HomeScreen() {
+  const theme = useTheme();
+  const { logOut, deleteAccount } = useAuth();
+  const user = useAuthStage('signedIn')?.user;
   const [state, setState] = useState<ServerState>({ kind: 'checking' });
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
@@ -41,22 +47,34 @@ export default function StatusScreen() {
     return () => clearInterval(timer);
   }, [check]);
 
+  // Rendered for a moment while the router leaves this screen.
+  if (!user) return <Screen>{null}</Screen>;
+
   const online = state.kind === 'online';
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.card}>
-        <Image source={require('../../assets/icon-1024.png')} style={styles.logo} />
-        <Text style={styles.title}>Droid247</Text>
-        <Text style={styles.subtitle}>Backend status</Text>
+    <Screen maxWidth={420}>
+      <View style={styles.user}>
+        <Avatar uri={user.avatarUrl} size={72} />
+        <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+          {user.name}
+        </Text>
+        <Text style={[typography.body, { color: theme.muted }]} numberOfLines={1}>
+          {user.email}
+        </Text>
+      </View>
 
+      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[typography.small, { color: theme.muted }]}>Backend status</Text>
         <View style={styles.statusRow}>
           {state.kind === 'checking' ? (
-            <ActivityIndicator color={colors.signalOrange} />
+            <ActivityIndicator color={brand.signalOrange} />
           ) : (
-            <View style={[styles.dot, { backgroundColor: online ? colors.online : colors.signalOrange }]} />
+            <View
+              style={[styles.dot, { backgroundColor: online ? theme.online : brand.signalOrange }]}
+            />
           )}
-          <Text style={styles.statusText} testID="server-status">
+          <Text style={[styles.statusText, { color: theme.text }]} testID="server-status">
             {state.kind === 'checking' ? 'Checking…' : online ? 'Online' : 'Offline'}
           </Text>
         </View>
@@ -75,22 +93,27 @@ export default function StatusScreen() {
           {lastChecked && <Detail label="Checked" value={lastChecked.toLocaleTimeString()} />}
         </View>
 
-        <Pressable
-          onPress={() => void check()}
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-        >
-          <Text style={styles.buttonText}>Refresh</Text>
-        </Pressable>
+        <Button title="Refresh" variant="secondary" onPress={() => void check()} />
       </View>
-    </SafeAreaView>
+
+      <View style={styles.actions}>
+        <View style={styles.action}>
+          <Button title="Log out" variant="secondary" onPress={logOut} />
+        </View>
+        <View style={styles.action}>
+          <Button title="Delete account" variant="danger" onPress={deleteAccount} />
+        </View>
+      </View>
+    </Screen>
   );
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
   return (
     <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} numberOfLines={2}>
+      <Text style={[typography.small, { color: theme.muted }]}>{label}</Text>
+      <Text style={[typography.small, styles.detailValue, { color: theme.text }]} numberOfLines={2}>
         {value}
       </Text>
     </View>
@@ -98,41 +121,20 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
+  user: { alignItems: 'center', gap: 4 },
+  name: { ...textMetrics, fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28, marginTop: 12 },
   card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    marginTop: 32,
     borderWidth: 1,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
+    borderRadius: 16,
+    padding: 20,
   },
-  logo: { width: 72, height: 72, borderRadius: 16 },
-  title: { color: colors.mist, fontSize: 28, fontWeight: '700', marginTop: 12 },
-  subtitle: { color: colors.muted, fontSize: 14, marginTop: 2 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
-  dot: { width: 14, height: 14, borderRadius: 7 },
-  statusText: { color: colors.white, fontSize: 22, fontWeight: '600' },
-  details: { alignSelf: 'stretch', marginTop: 24, gap: 8 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  statusText: { ...textMetrics, fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
+  details: { marginTop: 16, marginBottom: 20, gap: 8 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16 },
-  detailLabel: { color: colors.muted, fontSize: 14 },
-  detailValue: { color: colors.mist, fontSize: 14, flexShrink: 1, textAlign: 'right' },
-  button: {
-    marginTop: 24,
-    alignSelf: 'stretch',
-    backgroundColor: colors.signalOrange,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  buttonPressed: { opacity: 0.8 },
-  buttonText: { color: colors.ink, fontSize: 16, fontWeight: '700' },
+  detailValue: { flexShrink: 1, textAlign: 'right' },
+  actions: { flexDirection: 'row', marginTop: 24, gap: 12 },
+  action: { flex: 1 },
 });

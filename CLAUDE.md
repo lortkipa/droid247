@@ -6,7 +6,7 @@ Every user gets their own cloud virtual machine, and the agent works inside it. 
 
 ## Status
 
-Early stage. A working skeleton exists: `apps/server` serves a `health` procedure, and `apps/client` (web, Android, iOS) and `apps/desktop` (Tauri) show the backend status. Everything else in the stack and layout below is still the agreed plan. Update this file whenever something is built or a decision changes.
+Early stage. A working skeleton exists: `apps/server` serves a `health` procedure, and `apps/client` (web, Android, iOS) and `apps/desktop` (Tauri) show the backend status behind a **mock login flow**. The mock is client-only (`apps/client/src/lib/auth.tsx`): login (email or Google) → email code (always `123456`, one try) → name → home with the user, the backend status, log out and delete account. Nothing reaches the server and the session lives in memory, so a reload signs out. Real auth (Better Auth) replaces it later. Everything else in the stack and layout below is still the agreed plan. Update this file whenever something is built or a decision changes.
 
 Human-facing docs: `README.md` (run commands, configuration, troubleshooting) and `docs/setup.md` (what to install per OS and platform). Keep them in sync with this file.
 
@@ -108,7 +108,10 @@ No lint or test setup yet; add them here when they exist.
 - Internal packages (`@droid247/*`) export TypeScript source (`"exports": "./src/index.ts"`); there is no per-package build. Metro and tsx consume the source directly, and the server's tsup build bundles them (`noExternal`).
 - `.npmrc` sets `node-linker=hoisted` because React Native / Metro expect a flat `node_modules`.
 - Add Expo packages with `npx expo install <pkg>` from `apps/client` so versions match the Expo SDK (currently 57). Stay on the SDK that the App Store / Google Play build of Expo Go supports, not the newest on npm: Expo Go in the stores lags new SDK releases, and phones can't run the app otherwise. After changing the SDK, regenerate `pnpm-lock.yaml` from scratch so optional peers (e.g. `@expo/metro-runtime`) don't stay on the old SDK, and check native bundling with `npx expo export --platform android --platform ios`.
-- Expo Router routes live in `apps/client/src/app/`; other client code in `apps/client/src/lib/`. The `@/` import alias points to `apps/client/src/`.
+- Expo Router routes live in `apps/client/src/app/`, shared screen components in `apps/client/src/components/`, other client code in `apps/client/src/lib/`. The `@/` import alias points to `apps/client/src/`.
+- Auth stages are routed with `Stack.Protected` in `src/app/_layout.tsx`: each stage unlocks exactly one screen, so there's nothing to go back to.
+- The client follows the system theme (`useTheme()` in `src/lib/theme.ts`: white background in light mode, black in dark mode) and uses Outfit for all text (`fonts` / `typography` there, loaded in the root layout). Use the theme tokens, not hard-coded colours. With custom fonts, pick the weight by `fontFamily`, never `fontWeight`. Keep the look identical on phones: spread `textMetrics` into every text style (turns off Android's extra font padding), use the theme's `selection` / `selectionHighlight` for text inputs (see `TextField`), and set `needsOffscreenAlphaCompositing` on any view faded with `opacity` (Android otherwise fades each layer separately).
+- Every screen uses `<Screen>` (logo top left, centred column). The in-app logo (`src/components/Logo.tsx`) draws the `brand/logo/svg/mark.svg` geometry with react-native-svg; keep it in sync if the mark changes.
 - Per-turbo-task dev scripts: server has `dev`, client has `dev:web` / `dev:android` / `dev:ios` / `dev:mobile`, desktop has `dev:desktop`; root scripts combine them with `--filter`.
 - App icons in `apps/client/assets/` and `apps/desktop/src-tauri/icons/` are copies of `brand/logo/exports/`; re-copy if the logo changes.
 
