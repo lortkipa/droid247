@@ -6,7 +6,7 @@ Every user gets their own cloud virtual machine, and the agent works inside it. 
 
 ## Status
 
-Early stage. The repo has no application code yet, only this file and `LICENSE`. The stack and layout below are the agreed plan. Update this file whenever something is built or a decision changes.
+Early stage. The repo has no application code yet, only this file, `LICENSE` and the logo concepts in `brand/logo-concepts/` (25 directions; one will be chosen as the official logo). The stack and layout below are the agreed plan. Update this file whenever something is built or a decision changes.
 
 ## Supported platforms
 
@@ -52,6 +52,7 @@ packages/
   agent/       Agent definition: prompts, tools, Claude SDK wiring
   vm/          VmProvider interface + implementations (Incus first, cloud later)
   billing/     Plans, usage metering, weekly/monthly limit resets, Stripe
+brand/         Logo and brand assets (outlined SVGs; source for app icons)
 ```
 
 Rule of thumb: if two apps need the same logic, it belongs in a package, not copied into each app. Platform-specific code uses `.web.tsx` / `.native.tsx` / `.ios.tsx` / `.android.tsx` file suffixes or lives in `apps/desktop`.
