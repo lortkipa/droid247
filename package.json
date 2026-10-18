@@ -1,0 +1,23 @@
+{
+  "name": "droid247",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:server": "turbo run dev --filter=@droid247/server",
+    "dev:web": "turbo run dev dev:web --filter=@droid247/server --filter=@droid247/client",
+    "dev:desktop": "turbo run dev dev:desktop --filter=@droid247/server --filter=@droid247/desktop",
+    "dev:android": "turbo run dev dev:android --filter=@droid247/server --filter=@droid247/client",
+    "dev:ios": "turbo run dev dev:ios --filter=@droid247/server --filter=@droid247/client",
+    "dev:mobile": "turbo run dev dev:mobile --filter=@droid247/server --filter=@droid247/client",
+    "build": "turbo run build --filter=!@droid247/desktop",
+    "build:desktop": "turbo run build --filter=@droid247/desktop",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.9",
+    "typescript": "~6.0.3"
+  }
+}

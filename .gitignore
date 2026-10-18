@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.turbo/
+.expo/
+expo-env.d.ts
+web-build/
+apps/client/ios/
+apps/client/android/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
