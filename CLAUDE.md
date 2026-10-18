@@ -107,7 +107,7 @@ No lint or test setup yet; add them here when they exist.
 
 - Internal packages (`@droid247/*`) export TypeScript source (`"exports": "./src/index.ts"`); there is no per-package build. Metro and tsx consume the source directly, and the server's tsup build bundles them (`noExternal`).
 - `.npmrc` sets `node-linker=hoisted` because React Native / Metro expect a flat `node_modules`.
-- Add Expo packages with `npx expo install <pkg>` from `apps/client` so versions match the Expo SDK (currently 58).
+- Add Expo packages with `npx expo install <pkg>` from `apps/client` so versions match the Expo SDK (currently 57). Stay on the SDK that the App Store / Google Play build of Expo Go supports, not the newest on npm: Expo Go in the stores lags new SDK releases, and phones can't run the app otherwise. After changing the SDK, regenerate `pnpm-lock.yaml` from scratch so optional peers (e.g. `@expo/metro-runtime`) don't stay on the old SDK, and check native bundling with `npx expo export --platform android --platform ios`.
 - Expo Router routes live in `apps/client/src/app/`; other client code in `apps/client/src/lib/`. The `@/` import alias points to `apps/client/src/`.
 - Per-turbo-task dev scripts: server has `dev`, client has `dev:web` / `dev:android` / `dev:ios` / `dev:mobile`, desktop has `dev:desktop`; root scripts combine them with `--filter`.
 - App icons in `apps/client/assets/` and `apps/desktop/src-tauri/icons/` are copies of `brand/logo/exports/`; re-copy if the logo changes.

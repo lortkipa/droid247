@@ -155,7 +155,7 @@ CocoaPods is **not** needed for the current setup (Expo Go). It's only needed la
 
 ## Real phone (Expo Go)
 
-1. Install **Expo Go** from the [App Store](https://apps.apple.com/app/expo-go/id982107779) or [Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent). It must support Expo SDK 58.
+1. Install **Expo Go** from the [App Store](https://apps.apple.com/app/expo-go/id982107779) or [Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent). It must support Expo SDK 57 (the store version does; the error screen lists "Supported SDKs" if not).
 2. Connect the phone to the **same Wi-Fi** as your computer.
 3. Run `pnpm dev:mobile` and scan the QR code (Expo Go on Android, the Camera app on iPhone).
 4. Allow incoming connections on ports **3000** (API) and **8081** (Expo) in your computer's firewall.

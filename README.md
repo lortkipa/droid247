@@ -97,7 +97,7 @@ How the app finds the server when `EXPO_PUBLIC_API_URL` is empty:
 ## Troubleshooting
 
 - **Phone shows Offline.** The phone must be on the same Wi-Fi as your computer, and your firewall must allow incoming connections on ports 3000 and 8081. If it still fails, set the URL by hand: `EXPO_PUBLIC_API_URL=http://<your computer's IP>:3000 pnpm dev:mobile`.
-- **Expo Go says the project is incompatible.** Expo Go only runs one Expo SDK version (this project uses SDK 58). Update Expo Go from the store.
+- **Expo Go says the project is incompatible.** Each Expo Go release supports only one Expo SDK version. This project uses **SDK 57**, the version the store builds of Expo Go support. Update Expo Go from the store; if it still doesn't match, check the "Supported SDKs" line in the error against `expo` in `apps/client/package.json`.
 - **`pnpm dev:android` can't find a device.** Start the emulator first and check `adb devices` lists it.
 - **Desktop build fails on Linux with missing `webkit2gtk`.** Install Tauri's system packages, see [docs/setup.md](docs/setup.md#desktop-tauri).
 - **Port already in use.** Another copy is still running. Stop it, or change `PORT`.
