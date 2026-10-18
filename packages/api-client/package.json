@@ -1,0 +1,20 @@
+{
+  "name": "@droid247/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@droid247/shared": "workspace:*",
+    "@orpc/client": "^1.15.7",
+    "@orpc/contract": "^1.15.7"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}
