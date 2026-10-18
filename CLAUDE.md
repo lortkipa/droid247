@@ -26,11 +26,12 @@ The whole project is TypeScript so code (types, validation, API client, business
 - **Styling/UI:** shared React Native components in `packages/ui` (NativeWind / Tailwind classes).
 - **API:** Node.js server with Hono. Typed RPC with oRPC (or tRPC) so clients call the server with end-to-end types; Zod schemas in `packages/shared` are the single source of truth.
 - **Realtime:** Server-Sent Events / WebSocket to stream agent progress to clients.
+- **Live view / takeover:** each VM runs a VNC server; the server proxies it over an authenticated WebSocket and clients show it with noVNC (web/desktop, and a WebView on mobile). Users can watch the agent live and take control.
 - **Agent runtime:** long-running worker processes that execute agent tasks independently of any client connection. Uses the Claude API via the Anthropic TypeScript SDK (Claude Agent SDK for the agent loop). Model: Claude Opus 5.5 (`claude-opus-5-5`); keep the model ID in one config constant.
 - **Per-user VMs:** each user has a persistent Linux VM (desktop environment + browser + dev tools). The agent controls it through shell/file tools and Claude computer use (screenshots, mouse, keyboard). VMs are created, started, stopped and snapshotted through a `VmProvider` interface so the backend is not tied to one host. First implementation: Incus VMs on the home server. Later: a cloud implementation (e.g. AWS EC2 or Firecracker microVMs).
 - **Jobs/scheduling:** Postgres-backed queue (pg-boss) for task runs, retries and scheduled/recurring tasks.
 - **Database:** PostgreSQL with Drizzle ORM; migrations in `packages/db`.
-- **Auth:** Better Auth (works with web, Expo and Tauri).
+- **Auth:** Better Auth (works with web, Expo and Tauri). Two sign-in methods only: passwordless email (one-time verification code via the email OTP plugin) and Google OAuth. No passwords.
 - **Billing:** Stripe subscriptions. Usage limits reset weekly on paid plans and monthly on the free plan.
 - **Hosting:** a home server for now, running everything with Docker Compose (server, worker, Postgres) plus Incus for user VMs. Keep everything configured by environment variables and avoid host-specific assumptions so it can move to AWS or another provider later.
 - **Push notifications:** Expo Notifications (mobile), Web Push (web), Tauri notification plugin (desktop).
@@ -57,6 +58,7 @@ Rule of thumb: if two apps need the same logic, it belongs in a package, not cop
 
 ## Architecture notes
 
+- Live view is view-only by default. When the user takes control, the agent pauses its actions on that VM until the user hands control back. Only the VM's owner can open its live view.
 - Clients never run the agent. They create tasks through the API; the worker picks them up from the queue and runs them to completion.
 - All task state (status, messages, tool calls, results) is persisted in Postgres so any client can reconnect and resume viewing at any time.
 - Server and worker scale independently; the worker must tolerate restarts (resume or retry a task from persisted state).
