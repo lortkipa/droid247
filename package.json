@@ -14,6 +14,9 @@
     "dev:mobile": "turbo run dev dev:mobile --filter=@droid247/server --filter=@droid247/client",
     "build": "turbo run build --filter=!@droid247/desktop",
     "build:desktop": "turbo run build --filter=@droid247/desktop",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:generate": "pnpm --filter @droid247/db db:generate",
+    "db:migrate": "pnpm --filter @droid247/db db:migrate",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

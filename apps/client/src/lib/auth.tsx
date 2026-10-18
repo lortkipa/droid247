@@ -1,19 +1,21 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import { api } from './api';
+import { authClient, clearLocalSession, signInWithGoogle, takeRedirectError } from './auth-client';
 
 /**
- * Mock sign-in. Nothing talks to the server and nothing is stored: the session
- * lives in memory and is gone after a restart or page refresh.
+ * Sign-in state for the whole app, backed by Better Auth on the server.
+ * Google and Email on the same address are the same account. A new account
+ * asks for a name once (pre-filled from Google); after that the stored name
+ * and photo are kept, whichever way the user signs in.
  */
-
-/** The only code the mock accepts. */
-export const MOCK_VERIFICATION_CODE = '123456';
-
-/** The account "Continue with Google" signs in as. */
-const MOCK_GOOGLE_ACCOUNT = {
-  name: 'Alex Carter',
-  email: 'alex.carter@gmail.com',
-  avatarUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
-};
 
 export type User = {
   name: string;
@@ -23,63 +25,164 @@ export type User = {
 };
 
 export type AuthState =
+  /** Checking for a saved session at startup. */
+  | { stage: 'loading' }
   | { stage: 'signedOut' }
   | { stage: 'verifying'; email: string; failed: boolean }
+  /** Signed in to a new account that has no confirmed name yet. */
   | { stage: 'naming'; email: string; suggestedName: string; avatarUrl: string | null }
   | { stage: 'signedIn'; user: User };
 
 type AuthActions = {
-  requestEmailCode: (email: string) => void;
+  requestEmailCode: (email: string) => Promise<void>;
   /** Checks the code once; a wrong code marks the attempt as failed. */
-  verifyCode: (code: string) => void;
-  changeEmail: () => void;
-  continueWithGoogle: () => void;
-  completeName: (name: string) => void;
-  logOut: () => void;
-  deleteAccount: () => void;
+  verifyCode: (code: string) => Promise<void>;
+  changeEmail: () => Promise<void>;
+  continueWithGoogle: () => Promise<void>;
+  completeName: (name: string) => Promise<void>;
+  logOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
-type AuthContextValue = { state: AuthState } & AuthActions;
+type AuthContextValue = {
+  state: AuthState;
+  /** A request is running; buttons that start another one are disabled. */
+  busy: boolean;
+  /** The last thing that went wrong, for the current screen to show. */
+  error: string | null;
+} & AuthActions;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const SIGNED_OUT: AuthState = { stage: 'signedOut' };
+type Verifying = { email: string; failed: boolean };
+
+function messageOf(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(SIGNED_OUT);
+  const session = authClient.useSession();
+  const [verifying, setVerifying] = useState<Verifying | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(takeRedirectError);
 
-  const actions = useMemo<AuthActions>(
-    () => ({
-      requestEmailCode: (email) => setState({ stage: 'verifying', email, failed: false }),
-      verifyCode: (code) =>
-        setState((s) => {
-          if (s.stage !== 'verifying' || s.failed) return s;
-          return code === MOCK_VERIFICATION_CODE
-            ? { stage: 'naming', email: s.email, suggestedName: '', avatarUrl: null }
-            : { ...s, failed: true };
+  const sessionUser = session.data?.user ?? null;
+
+  // Signed in: the email code step is over.
+  useEffect(() => {
+    if (sessionUser) setVerifying(null);
+  }, [sessionUser]);
+
+  const state = useMemo<AuthState>(() => {
+    if (sessionUser) {
+      const avatarUrl = sessionUser.image ?? null;
+      return sessionUser.onboarded
+        ? {
+            stage: 'signedIn',
+            user: { name: sessionUser.name, email: sessionUser.email, avatarUrl },
+          }
+        : {
+            stage: 'naming',
+            email: sessionUser.email,
+            suggestedName: sessionUser.name,
+            avatarUrl,
+          };
+    }
+    if (session.isPending) return { stage: 'loading' };
+    if (verifying) return { stage: 'verifying', ...verifying };
+    return { stage: 'signedOut' };
+  }, [sessionUser, session.isPending, verifying]);
+
+  const actions = useMemo<AuthActions>(() => {
+    /** Runs one request at a time, clearing the previous error first. */
+    const run = async (task: () => Promise<void>) => {
+      setBusy(true);
+      setError(null);
+      try {
+        await task();
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    const signOut = async () => {
+      try {
+        await authClient.signOut();
+      } finally {
+        clearLocalSession();
+        // Reload the session even if the server couldn't be reached.
+        authClient.$store.notify('$sessionSignal');
+      }
+    };
+
+    return {
+      requestEmailCode: (email) =>
+        run(async () => {
+          const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: 'sign-in' });
+          if (error) {
+            setError("Couldn't send the code. Check your connection and try again.");
+            return;
+          }
+          setVerifying({ email, failed: false });
         }),
-      changeEmail: () => setState(SIGNED_OUT),
-      continueWithGoogle: () =>
-        setState({
-          stage: 'naming',
-          email: MOCK_GOOGLE_ACCOUNT.email,
-          suggestedName: MOCK_GOOGLE_ACCOUNT.name,
-          avatarUrl: MOCK_GOOGLE_ACCOUNT.avatarUrl,
-        }),
+
+      verifyCode: async (code) => {
+        if (!verifying || verifying.failed) return;
+        await run(async () => {
+          const { error } = await authClient.signIn.emailOtp({ email: verifying.email, otp: code });
+          if (error) setVerifying({ ...verifying, failed: true });
+        });
+      },
+
+      changeEmail: async () => {
+        setVerifying(null);
+        setError(null);
+        // From the name screen the user is already signed in to the new
+        // account; it stays without a name and asks again next time.
+        if (sessionUser) await run(signOut);
+      },
+
+      continueWithGoogle: async () => {
+        // Not tied to `busy`: the user may abandon Google in the browser and
+        // must be able to start again.
+        setError(null);
+        try {
+          await signInWithGoogle();
+        } catch (e) {
+          setError(messageOf(e, "Couldn't sign in with Google. Try again."));
+        }
+      },
+
       completeName: (name) =>
-        setState((s) =>
-          s.stage === 'naming'
-            ? { stage: 'signedIn', user: { name, email: s.email, avatarUrl: s.avatarUrl } }
-            : s,
-        ),
-      logOut: () => setState(SIGNED_OUT),
-      // Nothing is stored, so deleting the mock account is the same as signing out.
-      deleteAccount: () => setState(SIGNED_OUT),
-    }),
-    [],
-  );
+        run(async () => {
+          try {
+            await api.account.completeProfile({ name });
+          } catch (e) {
+            // CONFLICT: the name was already set (e.g. from another device); keep that one.
+            if ((e as { code?: unknown }).code !== 'CONFLICT') {
+              setError(messageOf(e, "Couldn't save your name. Try again."));
+              return;
+            }
+          }
+          await session.refetch();
+        }),
 
-  const value = useMemo(() => ({ state, ...actions }), [state, actions]);
+      logOut: () => run(signOut),
+
+      deleteAccount: () =>
+        run(async () => {
+          try {
+            await api.account.delete();
+          } catch (e) {
+            setError(messageOf(e, "Couldn't delete the account. Try again."));
+            return;
+          }
+          await signOut().catch(() => undefined);
+        }),
+    };
+  }, [verifying, sessionUser, session]);
+
+  const value = useMemo(() => ({ state, busy, error, ...actions }), [state, busy, error, actions]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -26,12 +26,6 @@ export default function RootLayout() {
   });
   const ready = fontsLoaded || fontError !== null;
 
-  useEffect(() => {
-    if (ready) {
-      void SplashScreen.hideAsync();
-    }
-  }, [ready]);
-
   // Root view colour, visible behind screens while the keyboard animates.
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(theme.background);
@@ -53,6 +47,18 @@ export default function RootLayout() {
 function RootStack() {
   const theme = useTheme();
   const { stage } = useAuth().state;
+  const loading = stage === 'loading';
+
+  // The splash stays up until we know whether a saved session exists.
+  useEffect(() => {
+    if (!loading) {
+      void SplashScreen.hideAsync();
+    }
+  }, [loading]);
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <Stack

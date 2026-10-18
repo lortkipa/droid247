@@ -5,6 +5,7 @@ What to install to run Droid247 on each platform. Install the **base tools** fir
 | You want to run | Sections to follow |
 | --- | --- |
 | Web | [Base tools](#base-tools) |
+| Google sign-in (any platform) | [Google sign-in](#google-sign-in) |
 | Desktop | [Base tools](#base-tools), [Desktop (Tauri)](#desktop-tauri) |
 | Android emulator | [Base tools](#base-tools), [Android emulator](#android-emulator) |
 | iOS simulator | [Base tools](#base-tools), [iOS simulator](#ios-simulator-macos-only) (Mac only) |
@@ -21,36 +22,82 @@ Needed for everything.
 | Git | any recent | Clone the repo |
 | Node.js | 22 LTS or newer | Runs the server, the build tools and the Expo dev server |
 | pnpm | 10 (pinned in `package.json`) | Package manager for the monorepo |
+| Docker with Docker Compose | any recent | Runs Postgres for local development |
 
 **macOS** (with [Homebrew](https://brew.sh)):
 
 ```bash
 brew install git node@22
+brew install --cask docker   # Docker Desktop; open it once so it starts
 ```
 
 **Windows** (PowerShell):
 
 ```powershell
-winget install Git.Git OpenJS.NodeJS.LTS
+winget install Git.Git OpenJS.NodeJS.LTS Docker.DockerDesktop
 ```
 
-**Linux** (Ubuntu/Debian): install Node 22 from [nodejs.org](https://nodejs.org/en/download) or with [nvm](https://github.com/nvm-sh/nvm):
+**Linux** (Ubuntu/Debian): install Node 22 from [nodejs.org](https://nodejs.org/en/download) or with [nvm](https://github.com/nvm-sh/nvm), and Docker Engine with the Compose plugin ([docs.docker.com/engine/install](https://docs.docker.com/engine/install/)):
 
 ```bash
 sudo apt install git
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 nvm install 22
+sudo usermod -aG docker $USER   # after installing Docker; log out and in
 ```
 
-Then, on every OS, turn on pnpm and install the project:
+Arch: `sudo pacman -S git nodejs pnpm docker docker-compose`, then `sudo systemctl enable --now docker`.
+
+Then, on every OS, turn on pnpm, install the project and set up the database:
 
 ```bash
 corepack enable
 cd droid247
 pnpm install
+pnpm db:up        # Postgres in Docker, on host port 5433 so it doesn't clash with a local Postgres
+pnpm db:migrate   # creates the tables
 ```
 
-Check: `node -v` prints v22 or newer, `pnpm -v` prints 10.x.
+Check: `node -v` prints v22 or newer, `pnpm -v` prints 10.x, `docker compose ps` shows `postgres` as healthy.
+
+## Google sign-in
+
+Email sign-in works out of the box (the code is always `123456` until email sending is built). Google sign-in needs an OAuth client from Google Cloud, free and done once:
+
+1. Open [Google Cloud console → APIs & Services](https://console.cloud.google.com/apis/credentials) and create (or pick) a project.
+2. **OAuth consent screen**: choose **External**, fill in the app name and your email, and add yourself under **Test users** (while the app is in testing mode only test users can sign in).
+3. **Credentials → Create credentials → OAuth client ID**, type **Web application**.
+   - **Authorized redirect URIs:** `http://localhost:3000/api/auth/callback/google`
+4. Copy the client ID and secret into `.env` in the repo root (copy `.env.example` first if you have no `.env`):
+
+   ```bash
+   GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-...
+   ```
+
+5. Restart the dev command.
+
+The same client serves every platform, because Google always returns to the **server** (`<BETTER_AUTH_URL>/api/auth/callback/google`), which then hands the session to the app:
+
+| Platform | How it signs in |
+| --- | --- |
+| Web | Redirects to Google and back to the page |
+| Desktop | Opens Google in your default browser; when done the browser opens the app through a `droid247://` link. On Linux and Windows `pnpm dev:desktop` registers the link at startup (your browser may ask to open Droid247). On macOS the link only works from an installed build (`pnpm build:desktop`). |
+| iOS simulator, Android emulator | Opens an in-app browser and returns to Expo Go. The Android emulator reaches the server as `localhost` through `adb reverse`, which `pnpm dev:android` sets up. |
+| Real phone | See below |
+
+### Google sign-in on a real phone
+
+Google only accepts `localhost` or a public HTTPS address as a redirect target, and the phone can't reach your computer as `localhost`. Either:
+
+- **Android over USB:** connect the phone, run `adb reverse tcp:3000 tcp:3000` and start with `EXPO_PUBLIC_API_URL=http://localhost:3000 pnpm dev:mobile`.
+- **Any phone, via a tunnel:** expose port 3000 with an HTTPS tunnel (for example `cloudflared tunnel --url http://localhost:3000`), then set both URLs to it and add `<tunnel URL>/api/auth/callback/google` to the redirect URIs in Google Cloud:
+
+  ```bash
+  BETTER_AUTH_URL=https://example.trycloudflare.com EXPO_PUBLIC_API_URL=https://example.trycloudflare.com pnpm dev:mobile
+  ```
+
+Email sign-in works on a real phone without any of this.
 
 ## Desktop (Tauri)
 
@@ -124,7 +171,7 @@ You run the app in a virtual Android phone (an AVD, Android Virtual Device) that
 4. Create a virtual device: **More Actions → Virtual Device Manager → Create device**, pick a phone (for example Pixel 8) and a recent system image, then finish.
 5. Linux only: the emulator needs hardware acceleration (KVM). Check with `ls /dev/kvm`; if it's missing, enable virtualization (VT-x/AMD-V) in your BIOS. Add yourself to the group: `sudo usermod -aG kvm $USER`, then log out and in.
 
-Check: `adb --version` and `emulator -list-avds` both work.
+Check: `adb --version` and `emulator -list-avds` both work. `pnpm dev:android` calls `adb`, so it must be on your `PATH`.
 
 Run it:
 
@@ -170,5 +217,5 @@ EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 pnpm dev:mobile
 
 Not needed yet, listed so you can plan ahead:
 
-- **Docker** with Docker Compose: for Postgres and running the server/worker like production.
+- **Docker** for running the server and worker like production (today it only runs Postgres).
 - **Incus**: for the per-user agent VMs on the home server.

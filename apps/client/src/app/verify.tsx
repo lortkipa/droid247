@@ -29,7 +29,7 @@ export default function VerifyScreen() {
         length={VERIFICATION_CODE_LENGTH}
         value={code}
         onChange={setCode}
-        onComplete={verifyCode}
+        onComplete={(value) => void verifyCode(value)}
         error={verifying.failed}
         autoFocus
       />
@@ -40,7 +40,7 @@ export default function VerifyScreen() {
       )}
 
       <View style={styles.actions}>
-        <Button title="Continue with a different Email" variant="secondary" onPress={changeEmail} />
+        <Button title="Continue with a different Email" variant="secondary" onPress={() => void changeEmail()} />
       </View>
     </Screen>
   );
