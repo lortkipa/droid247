@@ -2,7 +2,7 @@
 
 An AI agent that runs 24/7 in the cloud. This repository is the monorepo for the server and every client (web, desktop, Android, iOS).
 
-Right now it holds a **skeleton**: a small API server and one app screen that connects to it and shows whether the backend is online. The same app runs in the browser, as a desktop app and on phones.
+Right now it holds a **skeleton**: a small API server and an app with a mock login that connects to it and shows whether the backend is online. The same app runs in the browser, as a desktop app and on phones.
 
 ## What's in the repo
 
@@ -38,7 +38,12 @@ pnpm install           # installs everything for all apps
 pnpm dev:web           # starts the server and opens the app in your browser
 ```
 
-The screen should show **Online** with the server's version and uptime. Stop the server (Ctrl+C) and it switches to **Offline** within 5 seconds.
+The app opens on a **mock login** (nothing is checked against a real account yet):
+
+- **Continue with Email:** enter any valid address, then the code **`123456`**. A wrong code fails for good; use "Continue with a different Email" to start over.
+- **Continue with Google:** signs in as a sample Google account, no real Google sign-in.
+
+After you enter a name you land on the home screen. It shows your profile and the backend status: **Online** with the server's version and uptime. Stop the server (Ctrl+C) and it switches to **Offline** within 5 seconds. The session lives only in memory, so refreshing or restarting the app signs you out.
 
 ## Commands
 

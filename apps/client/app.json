@@ -6,8 +6,8 @@
     "orientation": "default",
     "icon": "./assets/icon-1024.png",
     "scheme": "droid247",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#0B0D12",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#000000",
     "ios": {
       "bundleIdentifier": "com.droid247.app",
       "supportsTablet": true
@@ -34,9 +34,14 @@
         {
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
-          "backgroundColor": "#0B0D12"
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#000000"
+          }
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
