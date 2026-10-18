@@ -2,6 +2,8 @@
 
 Droid247 is an AI agent that runs 24/7 in the cloud. Users give it tasks from any device, and the agent keeps working on the server even when the user's computer or phone is off. Clients are thin: they create and steer tasks, stream progress, and receive results and notifications.
 
+Every user gets their own cloud virtual machine, and the agent works inside it. The agent can do anything a human can do on a computer: browse the web, write and run code, manage email and calendars, and use other services.
+
 ## Status
 
 Early stage. The repo has no application code yet, only this file and `LICENSE`. The stack and layout below are the agreed plan. Update this file whenever something is built or a decision changes.
@@ -24,10 +26,13 @@ The whole project is TypeScript so code (types, validation, API client, business
 - **Styling/UI:** shared React Native components in `packages/ui` (NativeWind / Tailwind classes).
 - **API:** Node.js server with Hono. Typed RPC with oRPC (or tRPC) so clients call the server with end-to-end types; Zod schemas in `packages/shared` are the single source of truth.
 - **Realtime:** Server-Sent Events / WebSocket to stream agent progress to clients.
-- **Agent runtime:** long-running worker processes that execute agent tasks independently of any client connection. Uses the Claude API via the Anthropic TypeScript SDK (Claude Agent SDK for the agent loop).
+- **Agent runtime:** long-running worker processes that execute agent tasks independently of any client connection. Uses the Claude API via the Anthropic TypeScript SDK (Claude Agent SDK for the agent loop). Model: Claude Opus 5.5 (`claude-opus-5-5`); keep the model ID in one config constant.
+- **Per-user VMs:** each user has a persistent Linux VM (desktop environment + browser + dev tools). The agent controls it through shell/file tools and Claude computer use (screenshots, mouse, keyboard). VMs are created, started, stopped and snapshotted through a `VmProvider` interface so the backend is not tied to one host. First implementation: Incus VMs on the home server. Later: a cloud implementation (e.g. AWS EC2 or Firecracker microVMs).
 - **Jobs/scheduling:** Postgres-backed queue (pg-boss) for task runs, retries and scheduled/recurring tasks.
 - **Database:** PostgreSQL with Drizzle ORM; migrations in `packages/db`.
 - **Auth:** Better Auth (works with web, Expo and Tauri).
+- **Billing:** Stripe subscriptions. Usage limits reset weekly on paid plans and monthly on the free plan.
+- **Hosting:** a home server for now, running everything with Docker Compose (server, worker, Postgres) plus Incus for user VMs. Keep everything configured by environment variables and avoid host-specific assumptions so it can move to AWS or another provider later.
 - **Push notifications:** Expo Notifications (mobile), Web Push (web), Tauri notification plugin (desktop).
 
 ## Planned repository layout
@@ -44,6 +49,8 @@ packages/
   ui/          Cross-platform React Native components
   db/          Drizzle schema, migrations, DB helpers (server/worker only)
   agent/       Agent definition: prompts, tools, Claude SDK wiring
+  vm/          VmProvider interface + implementations (Incus first, cloud later)
+  billing/     Plans, usage metering, weekly/monthly limit resets, Stripe
 ```
 
 Rule of thumb: if two apps need the same logic, it belongs in a package, not copied into each app. Platform-specific code uses `.web.tsx` / `.native.tsx` / `.ios.tsx` / `.android.tsx` file suffixes or lives in `apps/desktop`.
@@ -53,6 +60,9 @@ Rule of thumb: if two apps need the same logic, it belongs in a package, not cop
 - Clients never run the agent. They create tasks through the API; the worker picks them up from the queue and runs them to completion.
 - All task state (status, messages, tool calls, results) is persisted in Postgres so any client can reconnect and resume viewing at any time.
 - Server and worker scale independently; the worker must tolerate restarts (resume or retry a task from persisted state).
+- A task runs against its owner's VM. The worker starts the VM if it is stopped, runs the agent loop, and may stop idle VMs to save resources. VM disks persist between tasks so the user's files, logins and installed tools survive.
+- User VMs are untrusted: they must be network-isolated from the host, the database and each other, and must never hold server secrets.
+- Usage (model tokens, VM time) is metered per user and checked against the plan's limit before and during each task.
 
 ## Conventions
 
