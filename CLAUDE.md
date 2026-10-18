@@ -6,7 +6,7 @@ Every user gets their own cloud virtual machine, and the agent works inside it. 
 
 ## Status
 
-Early stage. The repo has no application code yet, only this file and `LICENSE`. The stack and layout below are the agreed plan. Update this file whenever something is built or a decision changes.
+Early stage. The repo has no application code yet, only this file, `LICENSE` and the logo kit in `brand/logo/`. The stack and layout below are the agreed plan. Update this file whenever something is built or a decision changes.
 
 ## Supported platforms
 
@@ -52,9 +52,16 @@ packages/
   agent/       Agent definition: prompts, tools, Claude SDK wiring
   vm/          VmProvider interface + implementations (Incus first, cloud later)
   billing/     Plans, usage metering, weekly/monthly limit resets, Stripe
+brand/logo/    Final logo kit: master SVGs, platform icon exports, brand guidelines
 ```
 
 Rule of thumb: if two apps need the same logic, it belongs in a package, not copied into each app. Platform-specific code uses `.web.tsx` / `.native.tsx` / `.ios.tsx` / `.android.tsx` file suffixes or lives in `apps/desktop`.
+
+## Brand
+
+- Logo: **Cursor Droid**, a mouse cursor with two orange eyes. Guidelines, file choices and per-platform setup are in `brand/logo/README.md`.
+- Colours: Ink `#0B0D12`, White `#FFFFFF`, Mist `#F4F6FA`, Signal Orange `#FF5A1F`. Wordmark font: Outfit Bold.
+- When scaffolding `apps/client` and `apps/desktop`, take app icons, splash, favicons and notification icons from `brand/logo/exports/`; don't redraw them. The eye expressions in `brand/logo/svg/expressions/` are for in-app task states (working, done, needs you).
 
 ## Architecture notes
 
