@@ -1,7 +1,18 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
-  "globalEnv": ["PORT", "HOST", "CORS_ORIGIN", "EXPO_PUBLIC_API_URL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "PORT",
+    "HOST",
+    "CORS_ORIGIN",
+    "DATABASE_URL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "EXPO_PUBLIC_API_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

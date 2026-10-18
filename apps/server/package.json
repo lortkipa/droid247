@@ -10,9 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/expo": "^1.7.10",
+    "@droid247/db": "workspace:*",
     "@droid247/shared": "workspace:*",
     "@hono/node-server": "^2.1.5",
     "@orpc/server": "^1.15.7",
+    "better-auth": "^1.7.10",
+    "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "zod": "^4.6.7"
   },

@@ -10,13 +10,13 @@ import { typography, useTheme } from '@/lib/theme';
 
 export default function NameScreen() {
   const theme = useTheme();
-  const { completeName, changeEmail } = useAuth();
+  const { completeName, changeEmail, busy, error } = useAuth();
   const naming = useAuthStage('naming');
   const [name, setName] = useState(naming?.suggestedName ?? '');
 
   const parsed = DisplayNameSchema.safeParse(name);
   const submit = () => {
-    if (parsed.success) completeName(parsed.data);
+    if (parsed.success && !busy) void completeName(parsed.data);
   };
 
   return (
@@ -36,8 +36,14 @@ export default function NameScreen() {
           maxLength={100}
           returnKeyType="done"
         />
-        <Button title="Continue" onPress={submit} disabled={!parsed.success} />
-        <Button title="Continue with a different Email" variant="secondary" onPress={changeEmail} />
+        <Button title="Continue" onPress={submit} disabled={!parsed.success || busy} />
+        <Button
+          title="Continue with a different Email"
+          variant="secondary"
+          onPress={() => void changeEmail()}
+          disabled={busy}
+        />
+        {error && <Text style={[typography.small, styles.error, { color: theme.danger }]}>{error}</Text>}
       </View>
     </Screen>
   );
@@ -46,4 +52,5 @@ export default function NameScreen() {
 const styles = StyleSheet.create({
   title: { textAlign: 'center', marginBottom: 32 },
   form: { gap: 12 },
+  error: { textAlign: 'center' },
 });

@@ -25,7 +25,7 @@ function formatUptime(totalSeconds: number): string {
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const { logOut, deleteAccount } = useAuth();
+  const { logOut, deleteAccount, busy, error } = useAuth();
   const user = useAuthStage('signedIn')?.user;
   const [state, setState] = useState<ServerState>({ kind: 'checking' });
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -98,12 +98,18 @@ export default function HomeScreen() {
 
       <View style={styles.actions}>
         <View style={styles.action}>
-          <Button title="Log out" variant="secondary" onPress={logOut} />
+          <Button title="Log out" variant="secondary" onPress={() => void logOut()} disabled={busy} />
         </View>
         <View style={styles.action}>
-          <Button title="Delete account" variant="danger" onPress={deleteAccount} />
+          <Button
+            title="Delete account"
+            variant="danger"
+            onPress={() => void deleteAccount()}
+            disabled={busy}
+          />
         </View>
       </View>
+      {error && <Text style={[typography.small, styles.error, { color: theme.danger }]}>{error}</Text>}
     </Screen>
   );
 }
@@ -137,4 +143,5 @@ const styles = StyleSheet.create({
   detailValue: { flexShrink: 1, textAlign: 'right' },
   actions: { flexDirection: 'row', marginTop: 24, gap: 12 },
   action: { flex: 1 },
+  error: { textAlign: 'center', marginTop: 12 },
 });

@@ -11,19 +11,19 @@ import { typography, useTheme } from '@/lib/theme';
 
 export default function LoginScreen() {
   const theme = useTheme();
-  const { requestEmailCode, continueWithGoogle } = useAuth();
+  const { requestEmailCode, continueWithGoogle, busy, error: authError } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const trimmed = email.trim();
 
   const submit = () => {
-    if (!trimmed) return;
+    if (!trimmed || busy) return;
     if (!EmailSchema.safeParse(trimmed).success) {
       setError('Enter a valid email address.');
       return;
     }
-    requestEmailCode(trimmed);
+    void requestEmailCode(trimmed);
   };
 
   return (
@@ -53,7 +53,7 @@ export default function LoginScreen() {
           submitBehavior="submit"
           blurOnSubmit={false}
         />
-        <Button title="Continue with Email" onPress={submit} disabled={!trimmed} />
+        <Button title="Continue with Email" onPress={submit} disabled={!trimmed || busy} />
       </View>
 
       <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -62,8 +62,11 @@ export default function LoginScreen() {
         title="Continue with Google"
         variant="secondary"
         icon={<GoogleIcon />}
-        onPress={continueWithGoogle}
+        onPress={() => void continueWithGoogle()}
       />
+      {authError && (
+        <Text style={[typography.small, styles.error, { color: theme.danger }]}>{authError}</Text>
+      )}
     </Screen>
   );
 }
@@ -72,4 +75,5 @@ const styles = StyleSheet.create({
   title: { textAlign: 'center', marginBottom: 32 },
   form: { gap: 12 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 24 },
+  error: { textAlign: 'center', marginTop: 12 },
 });
