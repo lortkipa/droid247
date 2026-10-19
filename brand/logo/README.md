@@ -70,6 +70,7 @@ The eyes can change to show what the agent is doing. Use these in the product (t
 | `exports/web/` | `favicon.ico` (16/32/48), `favicon.svg`, PNG favicons, `apple-touch-icon.png`, PWA icons including a maskable one |
 | `exports/desktop/` | Tauri icon set: PNG sizes, Windows `icon.ico` and Store logos, macOS `icon.icns` (macOS-style padded tile) |
 | `exports/social/` | `og-image.png` (1200×630 link preview), profile avatars |
+| `exports/email/` | `lockup-dark.png`: dark lockup at 3× (108 px tall, shown at 36 px) for the Ink header of transactional emails |
 
 `svg/platform/` holds the source compositions for these exports.
 

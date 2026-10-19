@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fonts, textMetrics, useTheme } from '@/lib/theme';
 
@@ -10,6 +10,8 @@ type Props = {
   onPress: () => void;
   variant?: Variant;
   disabled?: boolean;
+  /** Shows a spinner instead of the title and ignores presses. */
+  loading?: boolean;
   /** Shown before the title, e.g. a provider logo. */
   icon?: ReactNode;
 };
@@ -32,7 +34,7 @@ function useTransition(on: boolean): Animated.Value {
   return value;
 }
 
-export function Button({ title, onPress, variant = 'primary', disabled = false, icon }: Props) {
+export function Button({ title, onPress, variant = 'primary', disabled = false, loading = false, icon }: Props) {
   const theme = useTheme();
   const [hovered, setHovered] = useState(false);
   // Phones have no hover, so a touch shows the hover shade instead.
@@ -40,8 +42,10 @@ export function Button({ title, onPress, variant = 'primary', disabled = false, 
   const filled = variant === 'primary';
   const labelColor = filled ? theme.onPrimary : variant === 'danger' ? theme.danger : theme.text;
 
-  const enabled = useTransition(!disabled);
-  const hover = useTransition((hovered || pressed) && !disabled);
+  // A loading button ignores presses but keeps its full colour.
+  const inactive = disabled || loading;
+  const enabled = useTransition(!disabled || loading);
+  const hover = useTransition((hovered || pressed) && !inactive);
 
   const opacity = enabled.interpolate({ inputRange: [0, 1], outputRange: [DISABLED_OPACITY, 1] });
   const backgroundColor = hover.interpolate({
@@ -65,20 +69,27 @@ export function Button({ title, onPress, variant = 'primary', disabled = false, 
     >
       <Pressable
         onPress={onPress}
-        disabled={disabled}
+        disabled={inactive}
         onHoverIn={() => setHovered(true)}
         onHoverOut={() => setHovered(false)}
         onPressIn={() => setPressed(true)}
         onPressOut={() => setPressed(false)}
         accessibilityRole="button"
-        accessibilityState={{ disabled }}
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: inactive, busy: loading }}
         style={[
           styles.pressable,
-          Platform.OS === 'web' && { cursor: disabled ? 'auto' : 'pointer' },
+          Platform.OS === 'web' && { cursor: inactive ? 'auto' : 'pointer' },
         ]}
       >
-        {icon && <View style={styles.icon}>{icon}</View>}
-        <Text style={[styles.label, { color: labelColor }]}>{title}</Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={labelColor} />
+        ) : (
+          <>
+            {icon && <View style={styles.icon}>{icon}</View>}
+            <Text style={[styles.label, { color: labelColor }]}>{title}</Text>
+          </>
+        )}
       </Pressable>
     </Animated.View>
   );

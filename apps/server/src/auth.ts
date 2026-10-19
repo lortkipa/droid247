@@ -6,13 +6,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { bearer, emailOTP, oneTimeToken } from 'better-auth/plugins';
 
 import { db } from './db';
+import { sendSignInCode } from './email';
 import { env } from './env';
-
-/**
- * Email delivery isn't built yet: no email is sent and every sign-in code is
- * this one. Replace with a real sender (and random codes) before launch.
- */
-const DEV_EMAIL_CODE = '123456';
 
 const google =
   env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -59,12 +54,14 @@ export const auth = betterAuth({
   socialProviders: google ? { google } : {},
   plugins: [
     emailOTP({
-      generateOTP: () => DEV_EMAIL_CODE,
-      sendVerificationOTP: async ({ email, type }) => {
-        console.log(`[auth] ${type} code for ${email}: ${DEV_EMAIL_CODE} (email sending not implemented)`);
-      },
-      // One try per code, like the app shows it.
+      // Random 6-digit code (Better Auth's default generator). Better Auth logs
+      // a failed send and still answers success, so the app can't tell.
+      sendVerificationOTP: ({ email, otp }) => sendSignInCode(email, otp),
+      // Better Auth takes seconds.
+      expiresIn: env.SIGN_IN_CODE_TTL_MINUTES * 60,
+      // One try per code, like the app shows it: a wrong code locks it out.
       allowedAttempts: 1,
+      storeOTP: 'hashed',
     }),
     oneTimeToken({ storeToken: 'hashed' }),
     bearer(),

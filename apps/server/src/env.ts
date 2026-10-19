@@ -34,9 +34,22 @@ const EnvSchema = z
     BETTER_AUTH_URL: optional,
     GOOGLE_CLIENT_ID: optional,
     GOOGLE_CLIENT_SECRET: optional,
+    // SMTP server for sign-in codes. Without it (dev only) codes are printed to the server log.
+    SMTP_HOST: isProduction ? z.string().min(1) : optional,
+    SMTP_PORT: z.coerce.number().int().positive().default(465),
+    SMTP_USER: isProduction ? z.string().min(1) : optional,
+    SMTP_PASS: isProduction ? z.string().min(1) : optional,
+    // Sender shown in the inbox, e.g. `Droid247 <you@gmail.com>`. Default: SMTP_USER.
+    EMAIL_FROM: optional,
+    // How many minutes an emailed sign-in code stays valid.
+    SIGN_IN_CODE_TTL_MINUTES: z.coerce.number().int().positive().default(5),
   })
-  .transform((env) => ({
+  .transform(({ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM, ...env }) => ({
     ...env,
+    smtp:
+      SMTP_HOST && SMTP_USER && SMTP_PASS
+        ? { host: SMTP_HOST, port: SMTP_PORT, user: SMTP_USER, pass: SMTP_PASS, from: EMAIL_FROM ?? SMTP_USER }
+        : undefined,
     BETTER_AUTH_URL: (env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`).replace(/\/+$/, ''),
     corsOrigins: env.CORS_ORIGIN.split(',')
       .map((o) => o.trim())
