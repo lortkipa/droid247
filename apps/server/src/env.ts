@@ -41,6 +41,8 @@ const EnvSchema = z
     SMTP_PASS: isProduction ? z.string().min(1) : optional,
     // Sender shown in the inbox, e.g. `Droid247 <you@gmail.com>`. Default: SMTP_USER.
     EMAIL_FROM: optional,
+    // How many minutes an emailed sign-in code stays valid.
+    SIGN_IN_CODE_TTL_MINUTES: z.coerce.number().int().positive().default(5),
   })
   .transform(({ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM, ...env }) => ({
     ...env,

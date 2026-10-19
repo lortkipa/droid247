@@ -26,11 +26,12 @@ function escapeHtml(value: string) {
 /** Subject, plain text and HTML of the sign-in code email. */
 export function signInCodeEmail({ code, email, minutes }: { code: string; email: string; minutes: number }) {
   const to = escapeHtml(email);
+  const duration = minutes === 1 ? '1 minute' : `${minutes} minutes`;
 
   const text = [
     `Your Droid247 sign-in code is ${code}`,
     '',
-    `It expires in ${minutes} minutes and works once.`,
+    `It expires in ${duration} and works once.`,
     "If you didn't try to sign in, you can ignore this email.",
   ].join('\n');
 
@@ -44,7 +45,7 @@ export function signInCodeEmail({ code, email, minutes }: { code: string; email:
 <title>Your Droid247 sign-in code</title>
 </head>
 <body style="margin:0;padding:0;background:${mist};-webkit-text-size-adjust:100%">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${mist}">Your code is ${code}. It expires in ${minutes} minutes.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${mist}">Your code is ${code}. It expires in ${duration}.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${mist}">
   <tr>
     <td align="center" style="padding:40px 16px">
@@ -64,7 +65,7 @@ export function signInCodeEmail({ code, email, minutes }: { code: string; email:
                 <td align="center" style="background:${mist};border-radius:12px;padding:24px 12px;font-size:40px;line-height:48px;font-weight:700;letter-spacing:12px;color:${ink}"><span style="margin-right:-12px">${code}</span></td>
               </tr>
             </table>
-            <p style="margin:16px 0 0;font-size:14px;line-height:20px;color:${grey};text-align:center">Expires in ${minutes} minutes &middot; Works once</p>
+            <p style="margin:16px 0 0;font-size:14px;line-height:20px;color:${grey};text-align:center">Expires in ${duration} &middot; Works once</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:32px">
               <tr><td style="border-top:1px solid ${line};height:1px;line-height:1px;font-size:0">&nbsp;</td></tr>
             </table>

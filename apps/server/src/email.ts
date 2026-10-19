@@ -3,9 +3,6 @@ import { createTransport, type Transporter } from 'nodemailer';
 import { env } from './env';
 import { logoAttachment, signInCodeEmail } from './sign-in-email';
 
-/** How long a sign-in code stays valid. */
-export const SIGN_IN_CODE_TTL_SECONDS = 5 * 60;
-
 let transport: Transporter | undefined;
 
 function getTransport(smtp: NonNullable<typeof env.smtp>) {
@@ -30,7 +27,7 @@ export async function sendSignInCode(email: string, code: string) {
     return;
   }
 
-  const { subject, text, html } = signInCodeEmail({ code, email, minutes: SIGN_IN_CODE_TTL_SECONDS / 60 });
+  const { subject, text, html } = signInCodeEmail({ code, email, minutes: env.SIGN_IN_CODE_TTL_MINUTES });
   await getTransport(env.smtp).sendMail({
     from: env.smtp.from,
     to: email,
