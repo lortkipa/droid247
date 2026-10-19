@@ -53,7 +53,7 @@ export default function LoginScreen() {
           submitBehavior="submit"
           blurOnSubmit={false}
         />
-        <Button title="Continue with Email" onPress={submit} disabled={!trimmed || busy} />
+        <Button title="Continue with Email" onPress={submit} loading={busy} disabled={!trimmed} />
       </View>
 
       <View style={[styles.divider, { backgroundColor: theme.border }]} />
