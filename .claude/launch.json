@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "server-no-smtp",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "SMTP_HOST=",
+        "SMTP_USER=",
+        "SMTP_PASS=",
+        "pnpm",
+        "--filter",
+        "@droid247/server",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@droid247/client",
+        "exec",
+        "expo",
+        "start",
+        "--web",
+        "--port",
+        "8081"
+      ],
+      "port": 8081
+    }
+  ]
+}

@@ -120,6 +120,8 @@ Run from the repo root with pnpm 10 and Node 22+. Every `dev:*` command also sta
 
 No lint or test setup yet; add them here when they exist.
 
+`.claude/launch.json` holds launch configs for Claude Code's preview browser: `server-no-smtp` (API server with SMTP turned off, so sign-in codes go to the log instead of a real inbox) and `web` (Expo web on 8081).
+
 ### Workspace conventions
 
 - Internal packages (`@droid247/*`) export TypeScript source (`"exports": "./src/index.ts"`); there is no per-package build. Metro and tsx consume the source directly, and the server's tsup build bundles them (`noExternal`).
