@@ -5,6 +5,7 @@ What to install to run Droid247 on each platform. Install the **base tools** fir
 | You want to run | Sections to follow |
 | --- | --- |
 | Web | [Base tools](#base-tools) |
+| Real sign-in emails (any platform) | [Email sign-in](#email-sign-in) |
 | Google sign-in (any platform) | [Google sign-in](#google-sign-in) |
 | Desktop | [Base tools](#base-tools), [Desktop (Tauri)](#desktop-tauri) |
 | Android emulator | [Base tools](#base-tools), [Android emulator](#android-emulator) |
@@ -60,9 +61,28 @@ pnpm db:migrate   # creates the tables
 
 Check: `node -v` prints v22 or newer, `pnpm -v` prints 10.x, `docker compose ps` shows `postgres` as healthy.
 
+## Email sign-in
+
+Sign-in codes are sent over SMTP. Without SMTP settings, development still works: the code is printed in the server log (the terminal running a `dev:*` command). To get real emails for free with a Gmail account (about 500 emails a day, no domain needed):
+
+1. Turn on [2-Step Verification](https://myaccount.google.com/signinoptions/twosv) for the Google account.
+2. Create an [app password](https://myaccount.google.com/apppasswords) (any name, e.g. "Droid247") and copy the 16 characters.
+3. Put it in `.env` in the repo root:
+
+   ```bash
+   SMTP_HOST=smtp.gmail.com
+   SMTP_USER=you@gmail.com
+   SMTP_PASS=abcdefghijklmnop
+   EMAIL_FROM=Droid247 <you@gmail.com>
+   ```
+
+4. Restart the dev command. If the email doesn't arrive, check the spam folder and the server log (send errors show up there).
+
+Any other SMTP server works the same way (`SMTP_PORT` is 465 by default, use 587 for STARTTLS). Once you own a domain, [Brevo](https://www.brevo.com) (300 emails a day free) or [Resend](https://resend.com) (3,000 a month free) deliver more reliably than a Gmail address; use their SMTP host, user and key in the same variables.
+
 ## Google sign-in
 
-Email sign-in works out of the box (the code is always `123456` until email sending is built). Google sign-in needs an OAuth client from Google Cloud, free and done once:
+Google sign-in needs an OAuth client from Google Cloud, free and done once:
 
 1. Open [Google Cloud console → APIs & Services](https://console.cloud.google.com/apis/credentials) and create (or pick) a project.
 2. **OAuth consent screen**: choose **External**, fill in the app name and your email, and add yourself under **Test users** (while the app is in testing mode only test users can sign in).

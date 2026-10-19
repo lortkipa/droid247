@@ -6,7 +6,7 @@ Every user gets their own cloud virtual machine, and the agent works inside it. 
 
 ## Status
 
-Early stage. A working skeleton exists: `apps/server` serves a `health` procedure and **real auth** (Better Auth on Postgres, see Auth below), and `apps/client` (web, Android, iOS) and `apps/desktop` (Tauri) sign in and show the backend status. Flow: login (Google or email) → email code → name (only for a new account) → home with the user, the backend status, log out and delete account. Google OAuth is real; **email sending is not built yet**: no email is sent and the code is always `123456` (`DEV_EMAIL_CODE` in `apps/server/src/auth.ts`), one try per code. Everything else in the stack and layout below is still the agreed plan. Update this file whenever something is built or a decision changes.
+Early stage. A working skeleton exists: `apps/server` serves a `health` procedure and **real auth** (Better Auth on Postgres, see Auth below), and `apps/client` (web, Android, iOS) and `apps/desktop` (Tauri) sign in and show the backend status. Flow: login (Google or email) → email code → name (only for a new account) → home with the user, the backend status, log out and delete account. Google OAuth and email codes are real: a random 6-digit code is emailed over SMTP (`apps/server/src/email.ts`), valid 5 minutes and for one try. Without SMTP settings (development only) the code is printed in the server log. Everything else in the stack and layout below is still the agreed plan. Update this file whenever something is built or a decision changes.
 
 Human-facing docs: `README.md` (run commands, configuration, troubleshooting) and `docs/setup.md` (what to install per OS and platform). Keep them in sync with this file.
 
@@ -70,6 +70,7 @@ Rule of thumb: if two apps need the same logic, it belongs in a package, not cop
 
 ## Auth
 
+- **Email codes:** Better Auth's email OTP plugin with its random 6-digit generator, `allowedAttempts: 1` (a wrong code locks that code out; the app then offers a different email), `expiresIn` from `SIGN_IN_CODE_TTL_SECONDS`, stored hashed in `verification`. A new request replaces the old code. Sent by `sendSignInCode` in `apps/server/src/email.ts` through nodemailer to any SMTP server (free: Gmail with an app password, no domain needed; with an own domain, Brevo or Resend's free tiers). Better Auth swallows send errors (it logs them and still answers success).
 - **One account per email.** Google and email OTP on the same address are the same user (`account.accountLinking` with Google trusted). Email OTP users have no `account` row; Google adds one.
 - **Profile set once, at creation.** Google sign-up stores the Google name and photo (`user.image`); email sign-up stores an empty name. The `user.onboarded` column (Better Auth additional field, `input: false`) is false until the user confirms a name on the name screen via `account.completeProfile` (oRPC), which only succeeds while `onboarded` is false. Later sign-ins and linking never change name or photo: keep Better Auth's `updateUserInfoOnLink` and `overrideUserInfoOnSignIn` at their default (false).
 - **Delete account** is `account.delete` (oRPC): deletes the user row; sessions and accounts cascade. Better Auth's own `deleteUser` isn't used (it needs a fresh session).
@@ -134,7 +135,7 @@ No lint or test setup yet; add them here when they exist.
 
 ### How the client finds the server
 
-`apps/client/src/lib/server-url.ts`: `EXPO_PUBLIC_API_URL` if set; else web, desktop, the iOS simulator and the Android emulator (`!Device.isDevice`) use `http://localhost:3000` (see Google redirect above); a real phone uses the Expo dev server host (from `Constants.expoConfig.hostUri`) on port 3000. The server binds `0.0.0.0` so phones can reach it. Server env (`PORT`, `HOST`, `CORS_ORIGIN`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) is loaded from the root `.env` and validated with Zod in `apps/server/src/env.ts`; empty values mean default, and `DATABASE_URL` / `BETTER_AUTH_SECRET` have dev-only defaults but are required when `NODE_ENV=production`. See `.env.example`.
+`apps/client/src/lib/server-url.ts`: `EXPO_PUBLIC_API_URL` if set; else web, desktop, the iOS simulator and the Android emulator (`!Device.isDevice`) use `http://localhost:3000` (see Google redirect above); a real phone uses the Expo dev server host (from `Constants.expoConfig.hostUri`) on port 3000. The server binds `0.0.0.0` so phones can reach it. Server env (`PORT`, `HOST`, `CORS_ORIGIN`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`) is loaded from the root `.env` and validated with Zod in `apps/server/src/env.ts`; empty values mean default, and `DATABASE_URL` / `BETTER_AUTH_SECRET` have dev-only defaults and `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` are optional in development, but all are required when `NODE_ENV=production`. See `.env.example`.
 
 ## Keeping this file current
 
