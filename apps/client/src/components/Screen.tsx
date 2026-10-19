@@ -2,20 +2,16 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Logo } from '@/components/Logo';
+import { Header, HEADER_HEIGHT } from '@/components/Header';
 import { useTheme } from '@/lib/theme';
 
-const HEADER_HEIGHT = 52;
-
-/** Page frame shared by every screen: logo top left, content centred in a column. */
+/** Page frame of the sign-in screens: logo top left, content centred in a column. */
 export function Screen({ children, maxWidth = 360 }: { children: ReactNode; maxWidth?: number }) {
   const theme = useTheme();
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Logo />
-      </View>
+      <Header />
       <KeyboardAvoidingView
         style={styles.screen}
         behavior={Platform.OS === 'web' ? undefined : 'padding'}
@@ -36,11 +32,6 @@ export function Screen({ children, maxWidth = 360 }: { children: ReactNode; maxW
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    height: HEADER_HEIGHT,
-    paddingHorizontal: 20,
-    justifyContent: 'flex-end',
-  },
   content: {
     flexGrow: 1,
     alignItems: 'center',

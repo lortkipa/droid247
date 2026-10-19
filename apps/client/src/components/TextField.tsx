@@ -8,7 +8,7 @@ import { fonts, textMetrics, typography, useTheme, type Theme } from '@/lib/them
  * ignored). iOS uses one colour for caret, handles and selection; Android can
  * keep the caret in the text colour.
  */
-function selectionProps(theme: Theme): TextInputProps {
+export function selectionProps(theme: Theme): TextInputProps {
   return Platform.select<TextInputProps>({
     android: {
       selectionColor: theme.selectionHighlight,

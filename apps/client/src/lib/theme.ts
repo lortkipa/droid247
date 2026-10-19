@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useColorScheme, type TextStyle } from 'react-native';
 
 /** Brand colours from brand/logo/README.md. */
 export const brand = {
@@ -29,6 +29,30 @@ export type Theme = {
   online: string;
   /** Cursor colour of the logo mark (mark.svg on light, mark-dark.svg on dark). */
   logo: string;
+  /** Chat bubble of the user's own messages and its text colour. */
+  userBubble: string;
+  onUserBubble: string;
+  /** The blue under the pointer (e.g. the enabled Send button on hover). */
+  userBubbleHover: string;
+  link: string;
+  /** Floating menus. */
+  popover: string;
+  /** Code colours, by highlight.js token class (see components/markdown/highlight.ts). */
+  syntax: SyntaxColors;
+};
+
+export type SyntaxColors = {
+  keyword: string;
+  string: string;
+  number: string;
+  comment: string;
+  function: string;
+  type: string;
+  variable: string;
+  attribute: string;
+  meta: string;
+  addition: string;
+  deletion: string;
 };
 
 const light: Theme = {
@@ -47,6 +71,24 @@ const light: Theme = {
   danger: '#D92D20',
   online: '#16A34A',
   logo: brand.ink,
+  userBubble: '#007AFF',
+  onUserBubble: brand.white,
+  userBubbleHover: '#0066D6',
+  link: '#0062CC',
+  popover: brand.white,
+  syntax: {
+    keyword: '#CF222E',
+    string: '#0A3069',
+    number: '#0550AE',
+    comment: '#6E7781',
+    function: '#8250DF',
+    type: '#953800',
+    variable: '#0550AE',
+    attribute: '#116329',
+    meta: '#6E7781',
+    addition: '#116329',
+    deletion: '#82071E',
+  },
 };
 
 const dark: Theme = {
@@ -65,6 +107,24 @@ const dark: Theme = {
   danger: '#F97066',
   online: '#2BD576',
   logo: brand.white,
+  userBubble: '#0A84FF',
+  onUserBubble: brand.white,
+  userBubbleHover: '#3D9BFF',
+  link: '#4DA3FF',
+  popover: '#16161A',
+  syntax: {
+    keyword: '#FF7B72',
+    string: '#A5D6FF',
+    number: '#79C0FF',
+    comment: '#8B949E',
+    function: '#D2A8FF',
+    type: '#FFA657',
+    variable: '#79C0FF',
+    attribute: '#7EE787',
+    meta: '#8B949E',
+    addition: '#7EE787',
+    deletion: '#FFA198',
+  },
 };
 
 /** Colours for the current system theme (light when the system doesn't say). */
@@ -81,6 +141,8 @@ export const fonts = {
   medium: 'Outfit_500Medium',
   semibold: 'Outfit_600SemiBold',
   bold: 'Outfit_700Bold',
+  /** JetBrains Mono, for code. */
+  mono: 'JetBrainsMono_400Regular',
 } as const;
 
 /**
@@ -93,4 +155,14 @@ export const typography = {
   title: { ...textMetrics, fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
   body: { ...textMetrics, fontFamily: fonts.regular, fontSize: 16, lineHeight: 22 },
   small: { ...textMetrics, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+  /** Chat message text. */
+  message: { ...textMetrics, fontFamily: fonts.regular, fontSize: 16, lineHeight: 24 },
+  // Ligatures off, so code shows the characters as typed (`=>`, not an arrow).
+  code: {
+    ...textMetrics,
+    fontFamily: fonts.mono,
+    fontSize: 13,
+    lineHeight: 20,
+    fontVariant: ['no-contextual', 'no-common-ligatures'] as TextStyle['fontVariant'],
+  },
 } as const;

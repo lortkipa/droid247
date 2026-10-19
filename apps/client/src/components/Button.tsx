@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fonts, textMetrics, useTheme } from '@/lib/theme';
+import { useTransition } from '@/lib/use-transition';
 
 type Variant = 'primary' | 'secondary' | 'danger';
 
@@ -16,23 +17,7 @@ type Props = {
   icon?: ReactNode;
 };
 
-const TRANSITION_MS = 150;
-const DISABLED_OPACITY = 0.4;
-// Colour animations can't run on the native driver; the web has none at all.
-const useNativeDriver = false;
-
-/** Fades between 0 and 1 whenever `on` changes. */
-function useTransition(on: boolean): Animated.Value {
-  const value = useRef(new Animated.Value(on ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.timing(value, {
-      toValue: on ? 1 : 0,
-      duration: TRANSITION_MS,
-      useNativeDriver,
-    }).start();
-  }, [on, value]);
-  return value;
-}
+export const DISABLED_OPACITY = 0.4;
 
 export function Button({ title, onPress, variant = 'primary', disabled = false, loading = false, icon }: Props) {
   const theme = useTheme();

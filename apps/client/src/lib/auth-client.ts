@@ -3,6 +3,7 @@ import { createAuthClient } from 'better-auth/react';
 import { oneTimeTokenClient } from 'better-auth/client/plugins';
 
 import { commonAuthPlugins, googleErrorMessage } from './auth-plugins';
+import { isDesktop } from './platform';
 import { apiUrl } from './server-url';
 
 /**
@@ -15,8 +16,6 @@ import { apiUrl } from './server-url';
  *   token. Google sign-in runs in the system browser and comes back through a
  *   droid247:// deep link (see apps/server/src/desktop-auth.ts).
  */
-
-const isDesktop = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 const TOKEN_KEY = 'droid247.session-token';
 

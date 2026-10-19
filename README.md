@@ -46,7 +46,9 @@ The app opens on the login screen:
 - **Continue with Email:** enter your address and type the 6-digit code from the email. Until you set up SMTP in `.env` (free with a Gmail account, see [Email sign-in](docs/setup.md#email-sign-in)) no email goes out and the server log prints the code instead. A code lasts 5 minutes (`SIGN_IN_CODE_TTL_MINUTES`) and gets one try: a wrong code fails for good, so use "Continue with a different Email" to get a new one.
 - **Continue with Google:** real Google sign-in. It needs a Google OAuth client in `.env` first, see [Google sign-in](docs/setup.md#google-sign-in). Without one the button says Google sign-in isn't set up.
 
-Google and Email with the same address are **the same account**. A new account asks for your name once (pre-filled with your Google name, and your Google photo becomes the profile photo). After that the name and photo stay as they are, whichever way you sign in. Then you land on the home screen: your profile, the backend status (**Online** with the server's version and uptime, **Offline** within 5 seconds of stopping the server), **Log out** and **Delete account**. You stay signed in across reloads and restarts.
+Google and Email with the same address are **the same account**. A new account asks for your name once (pre-filled with your Google name, and your Google photo becomes the profile photo). After that the name and photo stay as they are, whichever way you sign in. You stay signed in across reloads and restarts.
+
+Then you land on the **chat**. The agent isn't connected yet, so it starts with a mocked conversation (tables, lists, code in several languages, attachments) and answers with canned replies that stream in like a real model. You can type a message (Enter sends on web and desktop, Shift+Enter adds a line), attach any files with **+** (opens the file picker), and stop a reply. Everything is local to the app for now: reloading starts over. Log out and Delete account are not on this screen for now; to sign out, clear the site data (web) or the app's storage.
 
 ## Commands
 

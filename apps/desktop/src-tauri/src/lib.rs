@@ -6,6 +6,15 @@
 /// (see apps/client/src/lib/auth-client.ts).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Linux: the webview's file inputs (the chat's attach button) otherwise open
+    // GTK's built-in file chooser. Through the portal they get the desktop's own
+    // dialog (GNOME: Nautilus, KDE: Dolphin). Must be set before GTK starts;
+    // an explicit value from the environment wins.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("GTK_USE_PORTAL").is_none() {
+        std::env::set_var("GTK_USE_PORTAL", "1");
+    }
+
     let mut builder = tauri::Builder::default();
 
     // Must be registered first. On Linux and Windows a deep link starts a
