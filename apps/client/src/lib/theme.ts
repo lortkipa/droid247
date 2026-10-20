@@ -12,6 +12,8 @@ export type Theme = {
   scheme: 'light' | 'dark';
   background: string;
   surface: string;
+  /** Hovered and selected rows on `surface` (the sidebar). */
+  surfaceHover: string;
   border: string;
   text: string;
   muted: string;
@@ -59,6 +61,7 @@ const light: Theme = {
   scheme: 'light',
   background: brand.white,
   surface: brand.mist,
+  surfaceHover: '#E6E9F0',
   border: '#DCDFE5',
   text: brand.ink,
   muted: '#5F6675',
@@ -95,6 +98,7 @@ const dark: Theme = {
   scheme: 'dark',
   background: '#000000',
   surface: '#0E0E10',
+  surfaceHover: '#1C1C21',
   border: '#2A2A2F',
   text: brand.mist,
   muted: '#8B8F98',

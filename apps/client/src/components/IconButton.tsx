@@ -24,6 +24,8 @@ type Props = {
   size?: number;
   iconSize?: number;
   disabled?: boolean;
+  /** `ghost` only: the hover fill, for buttons on a surface other than the background. */
+  hoverColor?: string;
 };
 
 /** Round icon-only button with the same hover/press shading as Button. */
@@ -35,8 +37,10 @@ export function IconButton({
   size = 32,
   iconSize = 18,
   disabled = false,
+  hoverColor,
 }: Props) {
   const theme = useTheme();
+  const ghostHover = hoverColor ?? theme.outlineHover;
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const active = (hovered || pressed) && !disabled;
@@ -53,7 +57,7 @@ export function IconButton({
   const backgroundColor = hover.interpolate({
     inputRange: [0, 1],
     outputRange: ghost
-      ? [`${theme.outlineHover}00`, theme.outlineHover]
+      ? [`${ghostHover}00`, ghostHover]
       : [theme.primary, theme.primaryHover],
   });
   const accentColor = hover.interpolate({

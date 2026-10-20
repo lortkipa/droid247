@@ -82,7 +82,7 @@ function RootStack() {
         <Stack.Screen name="name" />
       </Stack.Protected>
       <Stack.Protected guard={stage === 'signedIn'}>
-        <Stack.Screen name="index" />
+        <Stack.Screen name="(app)" />
       </Stack.Protected>
     </Stack>
   );

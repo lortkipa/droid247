@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Svg, { G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 /**
  * Line icons on a 24px grid, drawn the same on every platform. Shapes are from
@@ -57,6 +57,25 @@ const shapes = {
     <>
       <Path d="M18 6 6 18" />
       <Path d="m6 6 12 12" />
+    </>
+  ),
+  settings: (
+    <>
+      <Path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+      <Circle cx={12} cy={12} r={3} />
+    </>
+  ),
+  'panel-left': (
+    <>
+      <Rect x={3} y={3} width={18} height={18} rx={2} />
+      <Path d="M9 3v18" />
+    </>
+  ),
+  menu: (
+    <>
+      <Path d="M4 5h16" />
+      <Path d="M4 12h16" />
+      <Path d="M4 19h16" />
     </>
   ),
 } satisfies Record<string, ReactNode>;

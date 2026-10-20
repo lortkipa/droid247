@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type { Attachment } from './attachments';
 import { fakeReply } from './fake-reply';
@@ -27,11 +36,11 @@ function newMessageId(): string {
 }
 
 /**
- * The conversation on screen. For now everything is local: it starts with a
- * mocked conversation and replies are canned markdown, streamed a few words
- * at a time like a real model. Reloading the app starts over.
+ * The conversation with the agent. For now everything is local: it starts
+ * with a mocked conversation and replies are canned markdown, streamed a few
+ * words at a time like a real model. Reloading the app starts over.
  */
-export function useChat() {
+function useChatState() {
   const [messages, setMessages] = useState<ChatMessage[]>(mockConversation);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const replies = useRef(0);
@@ -93,5 +102,26 @@ export function useChat() {
 
   const streaming = messages.some((m) => m.role === 'assistant' && m.status !== 'done');
 
-  return { messages, streaming, send, stop };
+  return useMemo(() => ({ messages, streaming, send, stop }), [messages, streaming, send, stop]);
+}
+
+type ChatContextValue = ReturnType<typeof useChatState>;
+
+const ChatContext = createContext<ChatContextValue | null>(null);
+
+/**
+ * Holds the conversation above the signed-in screens, so it survives switching
+ * tabs and the sidebar can show whether a reply is streaming.
+ */
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const value = useChatState();
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+}
+
+export function useChat(): ChatContextValue {
+  const value = useContext(ChatContext);
+  if (!value) {
+    throw new Error('useChat must be used inside <ChatProvider>');
+  }
+  return value;
 }
